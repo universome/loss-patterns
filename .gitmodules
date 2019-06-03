@@ -1,0 +1,3 @@
+[submodule "src/model_zoo"]
+	path = src/model_zoo
+	url = https://github.com/universome/model-zoo
