@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
 from firelab.utils.training_utils import get_module_device
