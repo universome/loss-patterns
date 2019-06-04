@@ -5,7 +5,8 @@ data_dir: "data"
 modules:
   models: ["model"]
   optims: ["optim"]
-max_num_epochs: 30
+max_num_epochs: 100
+val_freq_epochs: 1
 mask: [
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 0, 0, 0, 1, 0, 0],

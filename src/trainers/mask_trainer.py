@@ -84,8 +84,8 @@ class MaskTrainer(BaseTrainer):
         e1 = self.model.upper_left.to(self.config.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
-        ts = np.linspace(0, 1, num=20)
-        ss = np.linspace(0, 1, num=20)
+        ts = np.linspace(0, 10, num=30)
+        ss = np.linspace(0, 10, num=30)
 
         dummy_model = SimpleModel().to(self.config.device_name)
         weights = [[self.model.lower_left + t * e1 + s * e2 for s in ss] for t in ts]

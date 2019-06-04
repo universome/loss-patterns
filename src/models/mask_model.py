@@ -49,13 +49,12 @@ class MaskModel(ModuleOperation):
         return w
 
     def cell_center(self, i, j):
-        return self.lower_left + (i / self.mask.shape[0]) * self.upper_left + (j / self.mask.shape[1]) * self.lower_right
+        #return self.lower_left + (i / self.mask.shape[0]) * self.upper_left + (j / self.mask.shape[1]) * self.lower_right
+        return self.lower_left + i * self.upper_left + j * self.lower_right
 
     def compute_reg(self):
         orthogonalization_reg = torch.dot(self.lower_right, self.upper_left).pow(2)
-        up_norm = (self.upper_left / self.mask.shape[0]).norm()
-        right_norm = (self.lower_right / self.mask.shape[1]).norm()
-        norm_reg = (up_norm.pow(2) - right_norm.pow(2)).pow(2)
+        norm_reg = (self.upper_left.norm().pow(2) - self.lower_right.norm().pow(2)).pow(2)
 
         return orthogonalization_reg, norm_reg
 
