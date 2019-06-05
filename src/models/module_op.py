@@ -11,11 +11,15 @@ class ModuleOperation:
         for m in self.get_modules():
             m.train()
 
+        return self
+
     def eval(self):
         self.training = False
 
         for m in self.get_modules():
             m.eval()
+
+        return self
 
     def get_modules(self):
         return []

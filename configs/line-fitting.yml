@@ -1,0 +1,13 @@
+title: "Trying to fit a masked minimum"
+trainer: "LineTrainer"
+random_seed: 42
+data_dir: "data"
+modules:
+  models: ["model"]
+  optims: ["optim"]
+max_num_epochs: 100
+val_freq_epochs: 1
+hp:
+  batch_size: 256
+  lr: 0.001
+  dist_reg_coef: 0.01

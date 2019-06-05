@@ -45,18 +45,18 @@ class SimpleModelOperation(ModuleOperation):
 
         self.model = SequentialOp(
             ConvOp(params[0], params[1]),
-            F.relu,
+            nn.ReLU(inplace=True),
             MaxPool2dOp(2, 2),
             #DropoutOp(dropout_p, is2d=True),
 
             ConvOp(params[2], params[3]),
-            F.relu,
+            nn.ReLU(inplace=True),
             MaxPool2dOp(2, 2),
             #DropoutOp(dropout_p, is2d=True),
 
             Flatten(),
             LinearOp(params[4], params[5]),
-            F.relu,
+            nn.ReLU(inplace=True),
             #DropoutOp(dropout_p),
             LinearOp(params[6], params[7]),
         )
