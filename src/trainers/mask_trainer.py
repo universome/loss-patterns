@@ -35,7 +35,7 @@ class MaskTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        self.model = MaskModel(self.mask).to(self.config.device_name)
+        self.model = MaskModel(self.mask, self.config.hp.scaling).to(self.config.device_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
@@ -67,11 +67,13 @@ class MaskTrainer(BaseTrainer):
         self.optim.step()
 
         if self.mask[i][j] == 0:
-            self.writer.add_scalar('Train/bad/loss', clf_loss.item(), self.num_iters_done)
-            self.writer.add_scalar('Train/bad/acc', acc.item(), self.num_iters_done)
+            self.writer.add_scalar('bad/train/loss', clf_loss.item(), self.num_iters_done)
+            self.writer.add_scalar('bad/train/acc', acc.item(), self.num_iters_done)
+        elif self.mask[i][j] == 1:
+            self.writer.add_scalar('good/train/loss', clf_loss.item(), self.num_iters_done)
+            self.writer.add_scalar('good/train/acc', acc.item(), self.num_iters_done)
         else:
-            self.writer.add_scalar('Train/good/loss', clf_loss.item(), self.num_iters_done)
-            self.writer.add_scalar('Train/good/acc', acc.item(), self.num_iters_done)
+            raise NotImplementedError
 
         self.writer.add_scalar('Reg/ort', ort_reg.item(), self.num_iters_done)
         self.writer.add_scalar('Reg/norm', norm_reg.item(), self.num_iters_done)
@@ -84,8 +86,8 @@ class MaskTrainer(BaseTrainer):
         e1 = self.model.upper_left.to(self.config.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
-        ts = np.linspace(0, 10, num=30)
-        ss = np.linspace(0, 10, num=30)
+        ts = np.linspace(0, max(self.mask.shape) * 2, num=30)
+        ss = np.linspace(0, max(self.mask.shape) * 2, num=30)
 
         dummy_model = SimpleModel().to(self.config.device_name)
         weights = [[self.model.lower_left + t * e1 + s * e2 for s in ss] for t in ts]
@@ -131,12 +133,12 @@ class MaskTrainer(BaseTrainer):
 
     def validate(self):
         self.model.is_good_mode = True
-        good_val_loss, good_val_acc = validate(self.model, self.val_dataloader, self.criterion)
+        good_val_loss, good_val_acc = validate(self.model, self.train_dataloader, self.criterion)
         self.model.is_good_mode = False
-        bad_val_loss, bad_val_acc = validate(self.model, self.val_dataloader, self.criterion)
+        bad_val_loss, bad_val_acc = validate(self.model, self.train_dataloader, self.criterion)
         self.model.is_good_mode = True
 
-        self.writer.add_scalar('Val/good/loss', good_val_loss, self.num_iters_done)
-        self.writer.add_scalar('Val/good/acc', good_val_acc, self.num_iters_done)
-        self.writer.add_scalar('Val/bad/loss', bad_val_loss, self.num_iters_done)
-        self.writer.add_scalar('Val/bad/acc', bad_val_acc, self.num_iters_done)
+        self.writer.add_scalar('good/val/loss', good_val_loss, self.num_iters_done)
+        self.writer.add_scalar('good/val/acc', good_val_acc, self.num_iters_done)
+        self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_iters_done)
+        self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_iters_done)
