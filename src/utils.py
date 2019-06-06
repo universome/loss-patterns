@@ -152,13 +152,13 @@ def compute_activations_entropy(model, dataloader, num_bins:int=100):
 def linerp(w_a, w_b, model, dataloader, n_steps:int=25):
     alphas = np.linspace(0, 1, n_steps)
     weights = [w_a * (1 - alpha) + w_b * alpha for alpha in alphas]
-    val_scores = [validate_weights(w, dataloader, model=model) for w in weights]
+    val_scores = [validate_weights(w, dataloader, model=model) for w in tqdm(weights)]
 
     return val_scores
 
 
 def elbow_interpolation_scores(w_a, w_b, w_c, model, dataloader, n_steps:int=25):
-    a2c_scores = linerp(w_a, w_c, model, n_steps, dataloader)
-    c2b_scores = linerp(w_c, w_b, model, n_steps, dataloader)
+    a2c_scores = linerp(w_a, w_c, model, dataloader, n_steps=n_steps)
+    c2b_scores = linerp(w_c, w_b, model, dataloader, n_steps=n_steps)
 
     return a2c_scores + c2b_scores

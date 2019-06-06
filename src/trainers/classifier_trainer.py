@@ -12,13 +12,13 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.models import LineModel
-from src.utils import validate, validate_weights
+from src.models import SimpleModel, VGG11
+from src.utils import validate, validate_weights, weight_vector
 
 
-class LineTrainer(BaseTrainer):
+class ClassifierTrainer(BaseTrainer):
     def __init__(self, config):
-        super(LineTrainer, self).__init__(config)
+        super(ClassifierTrainer, self).__init__(config)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -32,7 +32,7 @@ class LineTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        self.model = LineModel().to(self.config.firelab.device_name)
+        self.model = SimpleModel().to(self.config.firelab.device_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
@@ -45,31 +45,21 @@ class LineTrainer(BaseTrainer):
         y = batch[1].to(self.config.firelab.device_name)
 
         preds = self.model(x)
-        clf_loss = self.criterion(preds, y).mean()
+        loss = self.criterion(preds, y).mean()
         acc = (preds.argmax(dim=1) == y).float().mean()
-
-        dist = (self.model.w_1 - self.model.w_2).norm()
-        w_1_len = self.model.w_1.norm()
-        w_2_len = self.model.w_2.norm()
-
-        if self.config.hp.dist_reg_coef == 0:
-            final_loss = clf_loss
-        else:
-            final_loss = clf_loss - self.config.hp.dist_reg_coef * dist
+        norm = weight_vector(self.model.parameters()).norm()
 
         self.optim.zero_grad()
-        final_loss.backward()
+        loss.backward()
         self.optim.step()
 
-        self.writer.add_scalar('Train/loss', clf_loss.item(), self.num_iters_done)
+        self.writer.add_scalar('Train/loss', loss.item(), self.num_iters_done)
         self.writer.add_scalar('Train/acc', acc.item(), self.num_iters_done)
-        self.writer.add_scalar('Reg/distance2', dist.item(), self.num_iters_done)
-        self.writer.add_scalar('Reg/w_1_norm2', w_1_len.item(), self.num_iters_done)
-        self.writer.add_scalar('Reg/w_2_norm2', w_2_len.item(), self.num_iters_done)
+        self.writer.add_scalar('Stats/weights_norm', norm.item(), self.num_iters_done)
 
     def validate(self):
         self.model.eval()
-        clf_loss, acc = validate(self.model, self.val_dataloader, self.criterion)
+        loss, acc = validate(self.model, self.val_dataloader, self.criterion)
 
-        self.writer.add_scalar('Val/loss', clf_loss.item(), self.num_iters_done)
+        self.writer.add_scalar('Val/loss', loss.item(), self.num_iters_done)
         self.writer.add_scalar('Val/acc', acc.item(), self.num_iters_done)

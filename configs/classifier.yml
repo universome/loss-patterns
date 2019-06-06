@@ -1,5 +1,5 @@
-title: "Trying to fit a line"
-trainer: "LineTrainer"
+title: "Trying to fit a classifier"
+trainer: "ClassifierTrainer"
 random_seed: 42
 data_dir: "data"
 modules:
