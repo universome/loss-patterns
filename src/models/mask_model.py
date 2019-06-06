@@ -43,11 +43,13 @@ class MaskModel(ModuleOperation):
             return self.sample_class_idx(1)
 
     def sample_class_idx(self, cls_idx:int) -> Tuple[int, int]:
+        return random.choice(self.get_class_idx(cls_idx))
+
+    def get_class_idx(self, cls_idx:int) -> List[Tuple[int, int]]:
         idx = np.indices(self.mask.shape).transpose(1,2,0)
         pos_idx = idx[np.where(self.mask == cls_idx)]
-        random_idx = random.choice(pos_idx)
 
-        return random_idx
+        return pos_idx
 
     def sample_class_weight(self, cls_idx:int):
         return self.cell_center(*self.sample_class_idx(cls_idx))

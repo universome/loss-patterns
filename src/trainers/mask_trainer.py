@@ -47,33 +47,43 @@ class MaskTrainer(BaseTrainer):
         x = batch[0].to(self.config.firelab.device_name)
         y = batch[1].to(self.config.firelab.device_name)
 
-        i, j = self.model.sample_idx()
-        preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
-        clf_loss = self.criterion(preds, y).mean()
-        acc = (preds.argmax(dim=1) == y).float().mean()
+        good_losses = []
+        good_accs = []
+        bad_losses = []
+        bad_accs = []
 
-        if self.mask[i][j] == 0:
-            loss = -clf_loss.clamp(0, self.config.hp.clip_threshold) * self.config.hp.negative_loss_coef
-        else:
-            loss = clf_loss
+        for i, j in self.model.get_class_idx(1):
+            preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
+            good_losses.append(self.criterion(preds, y).mean())
+            good_accs.append((preds.argmax(dim=1) == y).float().mean())
+
+        for i, j in self.model.get_class_idx(0):
+            preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
+            bad_losses.append(self.criterion(preds, y).mean())
+            bad_accs.append((preds.argmax(dim=1) == y).float().mean())
+
+        good_losses = torch.stack(good_losses)
+        good_accs = torch.stack(good_accs)
+        bad_losses = torch.stack(bad_losses)
+        bad_accs = torch.stack(bad_accs)
+
+        good_loss = good_losses.mean()
+        bad_loss = bad_losses.clamp(0, self.config.hp.clip_threshold).mean()
 
         ort_reg, norm_reg = self.model.compute_reg()
         right_len = self.model.lower_right.norm()
 
-        final_loss = loss + self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
+        final_loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
+        final_loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
 
         self.optim.zero_grad()
         final_loss.backward()
         self.optim.step()
 
-        if self.mask[i][j] == 0:
-            self.writer.add_scalar('bad/train/loss', clf_loss.item(), self.num_iters_done)
-            self.writer.add_scalar('bad/train/acc', acc.item(), self.num_iters_done)
-        elif self.mask[i][j] == 1:
-            self.writer.add_scalar('good/train/loss', clf_loss.item(), self.num_iters_done)
-            self.writer.add_scalar('good/train/acc', acc.item(), self.num_iters_done)
-        else:
-            raise NotImplementedError
+        self.writer.add_scalar('bad/train/loss', bad_losses.mean().mean().item(), self.num_iters_done)
+        self.writer.add_scalar('bad/train/acc', bad_accs.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('good/train/loss', good_losses.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)
 
         self.writer.add_scalar('Reg/ort', ort_reg.item(), self.num_iters_done)
         self.writer.add_scalar('Reg/norm', norm_reg.item(), self.num_iters_done)
