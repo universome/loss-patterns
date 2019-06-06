@@ -35,7 +35,7 @@ class MaskTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        self.model = MaskModel(self.mask, self.config.hp.scaling).to(self.config.device_name)
+        self.model = MaskModel(self.mask, self.config.hp.scaling).to(self.config.firelab.device_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
@@ -44,8 +44,8 @@ class MaskTrainer(BaseTrainer):
         self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
 
     def train_on_batch(self, batch):
-        x = batch[0].to(self.config.device_name)
-        y = batch[1].to(self.config.device_name)
+        x = batch[0].to(self.config.firelab.device_name)
+        y = batch[1].to(self.config.firelab.device_name)
 
         i, j = self.model.sample_idx()
         preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
@@ -83,13 +83,13 @@ class MaskTrainer(BaseTrainer):
         self.visualize_minimum()
 
     def compute_mask_scores(self):
-        e1 = self.model.upper_left.to(self.config.device_name)
+        e1 = self.model.upper_left.to(self.config.firelab.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
         ts = np.linspace(0, max(self.mask.shape) * 2, num=30)
         ss = np.linspace(0, max(self.mask.shape) * 2, num=30)
 
-        dummy_model = SimpleModel().to(self.config.device_name)
+        dummy_model = SimpleModel().to(self.config.firelab.device_name)
         weights = [[self.model.lower_left + t * e1 + s * e2 for s in ss] for t in ts]
         scores = [[validate_weights(w, self.val_dataloader, dummy_model) for w in w_row] for w_row in tqdm(weights)]
 

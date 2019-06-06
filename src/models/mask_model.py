@@ -58,7 +58,7 @@ class MaskModel(ModuleOperation):
 
     def compute_reg(self):
         orthogonalization_reg = torch.dot(self.lower_right, self.upper_left).pow(2)
-        norm_reg = (self.upper_left.norm().pow(2) - self.lower_right.norm().pow(2)).pow(2)
+        norm_reg = (self.upper_left.norm() - self.lower_right.norm()).pow(2)
 
         return orthogonalization_reg, norm_reg
 

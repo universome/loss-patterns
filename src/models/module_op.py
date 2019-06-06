@@ -5,21 +5,16 @@ class ModuleOperation:
     def __init__(self):
         self.trainig = True
 
-    def train(self):
-        self.training = True
+    def train(self, is_enabled:bool=True):
+        self.training = is_enabled
 
         for m in self.get_modules():
-            m.train()
+            m.train(is_enabled)
 
         return self
 
     def eval(self):
-        self.training = False
-
-        for m in self.get_modules():
-            m.eval()
-
-        return self
+        return self.train(False)
 
     def get_modules(self):
         return []
