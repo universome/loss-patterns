@@ -1,5 +1,6 @@
 import os
 import math
+import random
 from itertools import chain
 
 import numpy as np
@@ -21,7 +22,7 @@ class MaskTrainer(BaseTrainer):
     def __init__(self, config):
         super(MaskTrainer, self).__init__(config)
 
-        self.mask = np.array(self.config.mask)
+        self.mask = np.array(self.config.hp.mask)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -52,12 +53,15 @@ class MaskTrainer(BaseTrainer):
         bad_losses = []
         bad_accs = []
 
-        for i, j in self.model.get_class_idx(1):
+        good_idx = self.model.get_class_idx(1).tolist()
+        bad_idx = self.model.get_class_idx(0).tolist()
+
+        for i, j in random.sample(good_idx, min(len(good_idx), self.config.hp.num_cells_in_update.good)):
             preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
             good_losses.append(self.criterion(preds, y).mean())
             good_accs.append((preds.argmax(dim=1) == y).float().mean())
 
-        for i, j in self.model.get_class_idx(0):
+        for i, j in random.sample(bad_idx, min(len(bad_idx), self.config.hp.num_cells_in_update.bad)):
             preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
             bad_losses.append(self.criterion(preds, y).mean())
             bad_accs.append((preds.argmax(dim=1) == y).float().mean())
@@ -96,8 +100,8 @@ class MaskTrainer(BaseTrainer):
         e1 = self.model.upper_left.to(self.config.firelab.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
-        ts = np.linspace(0, max(self.mask.shape) * 2, num=30)
-        ss = np.linspace(0, max(self.mask.shape) * 2, num=30)
+        ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
+        ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
 
         dummy_model = SimpleModel().to(self.config.firelab.device_name)
         weights = [[self.model.lower_left + t * e1 + s * e2 for s in ss] for t in ts]
