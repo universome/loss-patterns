@@ -5,6 +5,7 @@ from .module_op import ModuleOperation
 from .simple_model import SimpleModel, SimpleModelOperation
 from src.utils import weight_vector, weight_to_param, param_sizes
 
+
 class LineModel(ModuleOperation):
     def __init__(self):
         super(LineModel, self).__init__()

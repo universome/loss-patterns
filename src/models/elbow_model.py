@@ -5,6 +5,7 @@ from .module_op import ModuleOperation
 from .simple_model import SimpleModel, SimpleModelOperation
 from src.utils import param_sizes, weight_vector
 
+
 class ElbowModel(ModuleOperation):
     def __init__(self, w_1=None, w_2=None, w_3=None):
         self.w_1 = w_1 if not w_1 is None else weight_vector(SimpleModel().parameters())

@@ -12,8 +12,10 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.models import LineModel
-from src.utils import validate, validate_weights
+from src.models import LineModel, SimpleModel
+from src.utils import validate, validate_weights, linerp, get_weights_linerp
+from src.utils import compute_weights_entropy_linerp, compute_activations_entropy_linerp
+from src.plotting_utils import generate_linerp_plot, generate_acts_entropy_linerp_plot, generate_weights_entropy_linerp_plot
 
 
 class LineTrainer(BaseTrainer):
@@ -73,3 +75,38 @@ class LineTrainer(BaseTrainer):
 
         self.writer.add_scalar('Val/loss', clf_loss.item(), self.num_iters_done)
         self.writer.add_scalar('Val/acc', acc.item(), self.num_iters_done)
+
+    def on_training_done(self):
+        self.visualize_linerp()
+        self.visualize_entropy_linerp()
+
+    def visualize_linerp(self):
+        dummy_model = SimpleModel().to(self.config.firelab.device_name)
+
+        w1to2_linerp_scores_train = linerp(self.model.w_1, self.model.w_2, dummy_model, self.train_dataloader)
+        w1to2_linerp_scores_test = linerp(self.model.w_1, self.model.w_2, dummy_model, self.val_dataloader)
+
+        self.writer.add_figure('w_1 to w_2 linerp/accuracy', generate_linerp_plot(
+            [s[1] for s in w1to2_linerp_scores_train],
+            [s[1] for s in w1to2_linerp_scores_test],
+        ))
+
+        self.writer.add_figure('w_1 to w_2 linerp/loss', generate_linerp_plot(
+            [s[0] for s in w1to2_linerp_scores_train],
+            [s[0] for s in w1to2_linerp_scores_test],
+        ))
+
+    def visualize_entropy_linerp(self):
+        # We are visualizing only between w_1 and w_2 here
+        dummy_model = SimpleModel().to(self.config.firelab.device_name)
+
+        # acts_ent_linerp_train = compute_activations_entropy_linerp(self.model.w_1, self.model.w_2, dummy_model.nn, self.train_dataloader)
+        acts_ent_linerp_test = compute_activations_entropy_linerp(self.model.w_1, self.model.w_2, dummy_model.nn, self.val_dataloader)
+        weights_ent_linerp = compute_weights_entropy_linerp(self.model.w_1, self.model.w_2)
+
+        # self.writer.add_figure('activations_entropy_linerp/train', generate_acts_entropy_linerp_plot(acts_ent_linerp_train))
+        self.writer.add_figure('activations_entropy_linerp/test', generate_acts_entropy_linerp_plot(acts_ent_linerp_test))
+        self.writer.add_figure('weights_entropy_linerp', generate_weights_entropy_linerp_plot(weights_ent_linerp))
+
+        for i, w in enumerate(get_weights_linerp(self.model.w_1, self.model.w_2)):
+            self.writer.add_histogram('Weights histogram', w.detach().cpu(), i)

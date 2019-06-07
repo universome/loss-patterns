@@ -10,11 +10,12 @@ from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
-from src.utils import weight_vector, validate, linerp, elbow_interpolation_scores
 from src.models import ElbowModel, SimpleModel
 from src.trainers.classifier_trainer import ClassifierTrainer
+from src.utils import weight_vector, validate, linerp, elbow_linerp_scores, get_weights_linerp
+from src.utils import compute_weights_entropy_linerp, compute_activations_entropy_linerp
+from src.plotting_utils import generate_linerp_plot, generate_acts_entropy_linerp_plot, generate_weights_entropy_linerp_plot
 
 
 class ElbowTrainerWrapper:
@@ -96,49 +97,49 @@ class ElbowTrainer(BaseTrainer):
         self.writer.add_scalar('Val/loss', loss.item(), self.num_iters_done)
         self.writer.add_scalar('Val/acc', acc.item(), self.num_iters_done)
 
-    def visualize_interpolations(self):
+    def visualize_linerps(self):
         dummy_model = SimpleModel().to(self.config.firelab.device_name)
 
         w1to2_linerp_scores_train = linerp(self.w_1, self.w_2, dummy_model, self.train_dataloader)
         w1to2_linerp_scores_test = linerp(self.w_1, self.w_2, dummy_model, self.val_dataloader)
-        elbow_linerp_scores_train = elbow_interpolation_scores(self.w_1, self.w_2, self.model.w_3, dummy_model, self.train_dataloader)
-        elbow_linerp_scores_test = elbow_interpolation_scores(self.w_1, self.w_2, self.model.w_3, dummy_model, self.val_dataloader)
+        elbow_linerp_scores_train = elbow_linerp_scores(self.w_1, self.w_2, self.model.w_3, dummy_model, self.train_dataloader)
+        elbow_linerp_scores_test = elbow_linerp_scores(self.w_1, self.w_2, self.model.w_3, dummy_model, self.val_dataloader)
 
-        self.writer.add_figure('w_1 to w_2 interpolation/accuracy', generate_interpolation_plot(
+        self.writer.add_figure('w_1 to w_2 linerp/accuracy', generate_linerp_plot(
             [s[1] for s in w1to2_linerp_scores_train],
             [s[1] for s in w1to2_linerp_scores_test],
         ))
 
-        self.writer.add_figure('w_1 to w_2 interpolation/loss', generate_interpolation_plot(
+        self.writer.add_figure('w_1 to w_2 linerp/loss', generate_linerp_plot(
             [s[0] for s in w1to2_linerp_scores_train],
             [s[0] for s in w1to2_linerp_scores_test],
         ))
 
-        self.writer.add_figure('elbow interpolation/accuracy', generate_interpolation_plot(
+        self.writer.add_figure('elbow linerp/accuracy', generate_linerp_plot(
             [s[1] for s in elbow_linerp_scores_train],
             [s[1] for s in elbow_linerp_scores_test],
         ))
 
-        self.writer.add_figure('elbow interpolation/loss', generate_interpolation_plot(
+        self.writer.add_figure('elbow linerp/loss', generate_linerp_plot(
             [s[0] for s in elbow_linerp_scores_train],
             [s[0] for s in elbow_linerp_scores_test],
         ))
 
+    def visualize_entropy_linerps(self):
+        # We are visualizing only between w_1 and w_2 here
+        dummy_model = SimpleModel().to(self.config.firelab.device_name)
+
+        # acts_ent_linerp_train = compute_activations_entropy_linerp(self.w_1, self.w_2, dummy_model.nn, self.train_dataloader)
+        acts_ent_linerp_test = compute_activations_entropy_linerp(self.w_1, self.w_2, dummy_model.nn, self.val_dataloader)
+        weights_ent_linerp = compute_weights_entropy_linerp(self.w_1, self.w_2)
+
+        # self.writer.add_figure('activations_entropy_linerp/train', generate_acts_entropy_linerp_plot(acts_ent_linerp_train))
+        self.writer.add_figure('activations_entropy_linerp/test', generate_acts_entropy_linerp_plot(acts_ent_linerp_test))
+        self.writer.add_figure('weights_entropy_linerp', generate_weights_entropy_linerp_plot(weights_ent_linerp))
+
+        for i, w in enumerate(get_weights_linerp(self.w_1, self.w_2)):
+            self.writer.add_histogram('Weights histogram', w.detach().cpu(), i)
+
     def on_training_done(self):
-        self.visualize_interpolations()
-
-
-def generate_interpolation_plot(linerp_vals_train, linerp_vals_test, title:str=''):
-    xs_train = np.linspace(0, 1, len(linerp_vals_train))
-    xs_test = np.linspace(0, 1, len(linerp_vals_test))
-
-    fig = plt.figure(figsize=(8, 5))
-    if title != '': plt.title(title)
-    plt.plot(xs_train, linerp_vals_train, label='Train')
-    plt.plot(xs_test, linerp_vals_test, label='Test')
-    plt.legend()
-    plt.xlabel('alpha')
-    plt.grid()
-
-    return fig
-
+        self.visualize_linerps()
+        self.visualize_entropy_linerps()
