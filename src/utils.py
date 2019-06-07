@@ -116,6 +116,8 @@ def validate_random_viscinity(weights):
 
 
 def compute_entropy(values, num_bins:int=100):
+    assert np.array(values).ndim == 1
+
     hist, _ = np.histogram(values, bins=num_bins)
     probs = hist / len(values)
     non_zero_probs = probs[probs != 0]
@@ -125,6 +127,7 @@ def compute_entropy(values, num_bins:int=100):
 
 
 def get_activations_for_sequential(sequential_model, x):
+    # It is useful to keep x for analysis and sanity check
     activations = [x]
 
     with torch.no_grad():
@@ -135,30 +138,60 @@ def get_activations_for_sequential(sequential_model, x):
 
 
 def compute_activations_entropy(model, dataloader, num_bins:int=100):
-    act_history = []
+    num_layers = len(model)
+    # print('Num layers:', num_layers)
+    activations = [torch.Tensor([]) for _ in range(num_layers + 1)]
+    device = get_module_device(model)
 
-    for x, y in dataloader:
-        #act_hist.append(model.get_activations(x))
-        act_history.append(get_activations_for_sequential(model.nn, x.to(device)))
+    for x, _ in dataloader:
+        for i, act in enumerate(get_activations_for_sequential(model, x.to(device))):
+            # print('kek', i, len(activations), activations[i])
+            activations[i] = torch.cat([activations[i], act])
 
-    # Transposing array
-    act_history = [[acts[i] for acts in act_history] for i in range(len(act_history[0]))]
-    activations = [torch.cat(acts) for acts in act_history]
     entropies = [compute_entropy(acts, num_bins) for acts in activations]
 
     return entropies
 
 
-def linerp(w_a, w_b, model, dataloader, n_steps:int=25):
+def compute_activations_entropy_for_weights(w, model, dataloader, num_bins:int=100):
+    params = weight_to_param(w, param_sizes(model.parameters()))
+    model.load_state_dict(params_to_state_dict(params, model.state_dict().keys()))
+
+    return compute_activations_entropy(model, dataloader, num_bins)
+
+
+def compute_activations_entropy_linerp(w_1, w_2, model, dataloader, n_steps:int=25, num_bins:int=100):
+    weights = get_weights_linerp(w_1, w_2, n_steps)
+    entropies = [compute_activations_entropy_for_weights(w, model, dataloader, num_bins) for w in tqdm(weights)]
+    entropies = np.array(entropies).transpose()
+
+    return entropies
+
+
+def compute_weights_entropy_linerp(w_1, w_2, n_steps:int=25, n_bins:int=1000):
+    weights = get_weights_linerp(w_1, w_2, n_steps)
+    weights = [w.detach().cpu() for w in weights]
+    entropies = [compute_entropy(w, n_bins) for w in tqdm(weights)]
+
+    return entropies
+
+
+def get_weights_linerp(w_1, w_2, n_steps:int=25):
     alphas = np.linspace(0, 1, n_steps)
-    weights = [w_a * (1 - alpha) + w_b * alpha for alpha in alphas]
+    weights = [w_1 * (1 - alpha) + w_2 * alpha for alpha in alphas]
+
+    return weights
+
+
+def linerp(w_1, w_2, model, dataloader, n_steps:int=25):
+    weights = get_weights_linerp(w_1, w_2, n_steps)
     val_scores = [validate_weights(w, dataloader, model=model) for w in tqdm(weights)]
 
     return val_scores
 
 
-def elbow_interpolation_scores(w_a, w_b, w_c, model, dataloader, n_steps:int=25):
-    a2c_scores = linerp(w_a, w_c, model, dataloader, n_steps=n_steps)
-    c2b_scores = linerp(w_c, w_b, model, dataloader, n_steps=n_steps)
+def elbow_linerp_scores(w_1, w_2, w_elbow, model, dataloader, n_steps:int=25):
+    a2c_scores = linerp(w_1, w_elbow, model, dataloader, n_steps=n_steps)
+    c2b_scores = linerp(w_elbow, w_2, model, dataloader, n_steps=n_steps)
 
     return a2c_scores + c2b_scores
