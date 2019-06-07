@@ -22,7 +22,8 @@ class MaskTrainer(BaseTrainer):
     def __init__(self, config):
         super(MaskTrainer, self).__init__(config)
 
-        self.mask = np.array(self.config.hp.mask)
+        # self.mask = np.array(self.config.hp.mask)
+        self.mask = generate_square_mask(self.config.hp.square_size)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -156,3 +157,33 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('good/val/acc', good_val_acc, self.num_iters_done)
         self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_iters_done)
         self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_iters_done)
+
+
+def generate_square_mask(square_size):
+    assert square_size >= 7
+    # 0 0 0 0 0 0 0
+    # 0 1 1 1 1 1 0
+    # 0 1 0 0 0 1 0
+    # 0 1 0 2 0 1 0
+    # 0 1 0 0 0 1 0
+    # 0 1 1 1 1 1 0
+    # 0 0 0 0 0 0 0
+
+    row_1 = np.zeros(square_size)
+
+    row_2 = np.ones(square_size)
+    row_2[0] = 0
+    row_2[-1] = 0
+
+    row_3 = np.zeros(square_size)
+    row_3[1] = 1
+    row_3[-2] = 1
+
+    row_4 = np.copy(row_3)
+    row_4[3:-3] = 2
+
+    return np.vstack([
+        row_1, row_2, row_3,
+        np.repeat(row_4[np.newaxis, :], square_size - 6, 0),
+        row_3, row_2, row_1
+    ]).astype(int)

@@ -139,13 +139,11 @@ def get_activations_for_sequential(sequential_model, x):
 
 def compute_activations_entropy(model, dataloader, num_bins:int=100):
     num_layers = len(model)
-    # print('Num layers:', num_layers)
     activations = [torch.Tensor([]) for _ in range(num_layers + 1)]
     device = get_module_device(model)
 
     for x, _ in dataloader:
         for i, act in enumerate(get_activations_for_sequential(model, x.to(device))):
-            # print('kek', i, len(activations), activations[i])
             activations[i] = torch.cat([activations[i], act])
 
     entropies = [compute_entropy(acts, num_bins) for acts in activations]
