@@ -13,6 +13,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from skimage.io import imread
 
 from src.models import MaskModel, SimpleModel
 from src.utils import validate, validate_weights, orthogonalize
@@ -23,7 +24,11 @@ class MaskTrainer(BaseTrainer):
         super(MaskTrainer, self).__init__(config)
 
         # self.mask = np.array(self.config.hp.mask)
-        self.mask = generate_square_mask(self.config.hp.square_size)
+        # self.mask = generate_square_mask(self.config.hp.square_size)
+        project_path = self.config.firelab.project_path
+        data_dir = os.path.join(project_path, self.config.data_dir)
+        icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
+        self.mask = np.array(icon > 0).astype(np.float)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
