@@ -6,16 +6,17 @@ import torch.nn as nn
 import numpy as np
 
 from src.models.module_op import ModuleOperation
-from src.models.simple_model import SimpleModel, SimpleModelOperation
 from src.utils import weight_vector
 
 
 class MaskModel(ModuleOperation):
-    def __init__(self, mask:List[List[int]], scaling:float=1.):
+    def __init__(self, mask:List[List[int]], torch_model_cls, model_op_cls, scaling:float=1.):
         self.mask = mask
-        self.lower_left = nn.Parameter(weight_vector(SimpleModel().parameters()))
-        self.upper_left = nn.Parameter(weight_vector(SimpleModel().parameters()))
-        self.lower_right = nn.Parameter(weight_vector(SimpleModel().parameters()))
+        self.torch_model_cls = torch_model_cls
+        self.model_op_cls = model_op_cls
+        self.lower_left = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.upper_left = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.lower_right = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
         self.scaling = scaling
         self.is_good_mode = True
 
@@ -32,7 +33,7 @@ class MaskModel(ModuleOperation):
         return self.run_from_weights(w, x)
 
     def run_from_weights(self, w, x):
-        return SimpleModelOperation(w)(x)
+        return self.model_op_cls(w)(x)
 
     def sample_idx(self) -> Tuple[int, int]:
         # i = random.randint(0, self.mask.shape[0] - 1)

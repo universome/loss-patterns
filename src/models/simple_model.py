@@ -21,9 +21,9 @@ class SimpleModel(nn.Module):
             nn.MaxPool2d(2, stride=2),
 
             Flatten(),
-            nn.Linear(800, 128),
+            nn.Linear(800, 1024),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 10)
+            nn.Linear(1024, 10)
         )
 
     def forward(self, x):
@@ -41,6 +41,8 @@ class SimpleModel(nn.Module):
 
 class SimpleModelOperation(ModuleOperation):
     def __init__(self, weight, dropout_p:float=0.):
+        super(SimpleModelOperation, self).__init__()
+
         params = weight_to_param(weight, param_sizes(SimpleModel().parameters()))
 
         self.model = SequentialOp(

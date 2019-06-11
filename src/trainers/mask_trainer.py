@@ -17,6 +17,7 @@ from tqdm import tqdm
 from skimage.io import imread
 
 from src.models import MaskModel, SimpleModel
+from src.models.vgg import VGG11, VGG11Operation
 from src.utils import validate, validate_weights, orthogonalize
 
 
@@ -44,7 +45,8 @@ class MaskTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        self.model = MaskModel(self.mask, self.config.hp.scaling).to(self.config.firelab.device_name)
+        self.model = MaskModel(self.mask, VGG11, VGG11Operation, self.config.hp.scaling)
+        self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')

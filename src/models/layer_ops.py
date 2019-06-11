@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 
 from src.models.module_op import ModuleOperation
@@ -20,15 +21,16 @@ class SequentialOp(ModuleOperation):
 
 
 class ConvOp(ModuleOperation):
-    def __init__(self, weights, bias=None, stride:int=1):
+    def __init__(self, weights, bias=None, stride:int=1, padding:int=0):
         super(ConvOp, self).__init__()
 
         self.weights = weights
         self.bias = bias
         self.stride = stride
+        self.padding = padding
 
     def __call__(self, X):
-        return F.conv2d(X, self.weights, bias=self.bias, stride=self.stride)
+        return F.conv2d(X, self.weights, bias=self.bias, stride=self.stride, padding=self.padding)
 
 
 class LinearOp(ModuleOperation):
@@ -67,3 +69,20 @@ class DropoutOp(ModuleOperation):
             return F.dropout2d(x, p=self.p)
         else:
             return F.dropout(x, p=self.p)
+
+
+class BatchNormOp(ModuleOperation):
+    def __init__(self, weight, bias):
+        super(BatchNormOp, self).__init__()
+
+        self.weight = weight
+        self.bias = bias
+
+    def __call__(self, x):
+        # We do not keep running mean/var because anyway
+        # during interpolation we won't be able to use it
+        dummy_mean = torch.zeros_like(self.bias)
+        dummy_var = torch.ones_like(self.weight)
+
+        return F.batch_norm(x, dummy_mean, dummy_var,
+            weight=self.weight, bias=self.bias, training=True)
