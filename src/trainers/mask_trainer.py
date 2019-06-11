@@ -2,6 +2,7 @@ import os
 import math
 import random
 from itertools import chain
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -29,6 +30,7 @@ class MaskTrainer(BaseTrainer):
         data_dir = os.path.join(project_path, self.config.data_dir)
         icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
         self.mask = np.array(icon > 0).astype(np.float)
+        self.mask = make_mask_ternary(self.mask)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -192,3 +194,22 @@ def generate_square_mask(square_size):
         np.repeat(row_4[np.newaxis, :], square_size - 6, 0),
         row_3, row_2, row_1
     ]).astype(int)
+
+
+def make_mask_ternary(mask):
+    "Sets those 0s, which do not have 1s around to 2"
+    useless_zeros:List[Tuple[int, int]] = []
+
+    for i in range(mask.shape[0]):
+        for j in range(mask.shape[1]):
+            if mask[i][j] == 1: continue
+
+            num_ones = mask[max(i-1, 0):i+2, max(j-1, 0):j+2].sum()
+
+            if num_ones == 0:
+                useless_zeros.append((i, j))
+
+    result = np.copy(mask)
+    result[[i for i,j in useless_zeros], [j for i,j in useless_zeros]] = 2
+
+    return result
