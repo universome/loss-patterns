@@ -101,39 +101,39 @@ class VGG11Operation(ModuleOperation):
         params = weight_to_param(weight, self.param_sizes)
 
         self.model = SequentialOp(
-            ConvOp(params[0], params[1], padding=1),
+            Conv2dOp(params[0], params[1], padding=1),
             BatchNormOp(params[2], params[3]),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            ConvOp(params[4], params[5], padding=1),
+            Conv2dOp(params[4], params[5], padding=1),
             BatchNormOp(params[6], params[7]),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            ConvOp(params[8], params[9], padding=1),
+            Conv2dOp(params[8], params[9], padding=1),
             BatchNormOp(params[10], params[11]),
             nn.ReLU(inplace=True),
 
-            ConvOp(params[12], params[13], padding=1),
+            Conv2dOp(params[12], params[13], padding=1),
             BatchNormOp(params[14], params[15]),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            ConvOp(params[16], params[17], padding=1),
+            Conv2dOp(params[16], params[17], padding=1),
             BatchNormOp(params[18], params[19]),
             nn.ReLU(inplace=True),
 
-            ConvOp(params[20], params[21], padding=1),
+            Conv2dOp(params[20], params[21], padding=1),
             BatchNormOp(params[22], params[23]),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            ConvOp(params[24], params[25], padding=1),
+            Conv2dOp(params[24], params[25], padding=1),
             BatchNormOp(params[26], params[27]),
             nn.ReLU(inplace=True),
 
-            ConvOp(params[28], params[29], padding=1),
+            Conv2dOp(params[28], params[29], padding=1),
             BatchNormOp(params[30], params[31]),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),

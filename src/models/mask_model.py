@@ -1,5 +1,6 @@
 import random
 from typing import List, Tuple
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -74,3 +75,10 @@ class MaskModel(ModuleOperation):
 
     def parameters(self):
         return [self.lower_left, self.upper_left, self.lower_right]
+
+    def state_dict(self):
+        return OrderedDict([
+            ('lower_left', self.lower_left.cpu().numpy()),
+            ('upper_left', self.upper_left.cpu().numpy()),
+            ('lower_right', self.lower_right.cpu().numpy()),
+        ])

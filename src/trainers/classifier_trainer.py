@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from firelab import BaseTrainer
 from torchvision.datasets import MNIST, FashionMNIST
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, ToPILImage, Compose
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -32,7 +32,9 @@ class ClassifierTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        self.model = SimpleModel().to(self.config.firelab.device_name)
+        # self.model = SimpleModel().to(self.config.firelab.device_name)
+        self.model = VGG11(n_input_channels=1, num_classes=10, head_size=512)
+        self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')

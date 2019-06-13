@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
 
-from src.models import MaskModel, SimpleModel
+from src.models import MaskModel, SimpleModel, SimpleModelOperation
 from src.models.vgg import VGG11, VGG11Operation
 from src.utils import validate, validate_weights, orthogonalize
 
@@ -27,12 +27,20 @@ class MaskTrainer(BaseTrainer):
         super(MaskTrainer, self).__init__(config)
 
         # self.mask = np.array(self.config.hp.mask)
-        # self.mask = generate_square_mask(self.config.hp.square_size)
-        project_path = self.config.firelab.project_path
-        data_dir = os.path.join(project_path, self.config.data_dir)
-        icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
-        self.mask = np.array(icon > 0).astype(np.float)
-        self.mask = make_mask_ternary(self.mask)
+        self.mask = generate_square_mask(self.config.hp.square_size)
+        # project_path = self.config.firelab.project_path
+        # data_dir = os.path.join(project_path, self.config.data_dir)
+        # icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
+        # self.mask = np.array(icon > 0).astype(np.float)
+        # self.mask = make_mask_ternary(self.mask)
+        if self.config.get("model_name", "").lower() == "vgg":
+            self.torch_model_cls = VGG11
+            self.model_op_cls = VGG11Operation
+        else:
+            self.torch_model_cls = SimpleModel
+            self.model_op_cls = SimpleModelOperation
+
+        assert False
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -45,8 +53,11 @@ class MaskTrainer(BaseTrainer):
         self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=3, shuffle=True)
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
+    def before_start_hook(self):
+        self.plot_mask()
+
     def init_models(self):
-        self.model = MaskModel(self.mask, VGG11, VGG11Operation, self.config.hp.scaling)
+        self.model = MaskModel(self.mask, self.torch_model_cls, self.model_op_cls, self.config.hp.scaling)
         self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):
@@ -118,8 +129,8 @@ class MaskTrainer(BaseTrainer):
 
         # dummy_model = SimpleModel().to(self.config.firelab.device_name)
 
-        dummy_model = VGG11().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.lower_left + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in ts]
+        dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
+        scores = [[validate_weights(self.model.lower_left + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in tqdm(ts)]
         # scores = [[validate_weights(w, self.val_dataloader, dummy_model) for w in w_row] for w_row in tqdm(weights)]
 
         print('Scoring took', time.time() - start)
@@ -173,6 +184,13 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('good/val/acc', good_val_acc, self.num_iters_done)
         self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_iters_done)
         self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_iters_done)
+
+    def plot_mask(self):
+        fig = plt.figure(figsize=(5, 5))
+        mask_img = np.copy(self.mask)
+        mask_img[mask_img == 2] = 0.5
+        plt.imshow(mask_img, cmap='gray')
+        self.writer.add_figure('Mask', fig, self.num_iters_done)
 
 
 def generate_square_mask(square_size):

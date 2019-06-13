@@ -1,7 +1,9 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 from src.models.module_op import ModuleOperation
+from src.model_zoo.layers import Flatten
 
 
 class SequentialOp(ModuleOperation):
@@ -20,9 +22,9 @@ class SequentialOp(ModuleOperation):
         return self.modules
 
 
-class ConvOp(ModuleOperation):
+class Conv2dOp(ModuleOperation):
     def __init__(self, weights, bias=None, stride:int=1, padding:int=0):
-        super(ConvOp, self).__init__()
+        super(Conv2dOp, self).__init__()
 
         self.weights = weights
         self.bias = bias
@@ -86,3 +88,29 @@ class BatchNormOp(ModuleOperation):
 
         return F.batch_norm(x, dummy_mean, dummy_var,
             weight=self.weight, bias=self.bias, training=True)
+
+
+def convert_sequential_model_to_op(seq_model:nn.Sequential) -> ModuleOperation:
+    ops = []
+    params = list(seq_model.parameters())
+
+    for module in seq_model.children():
+        if isinstance(module, nn.Linear):
+            ops.append(LinearOp(*params[:2]))
+            params = params[2:]
+        elif isinstance(module, nn.Conv2d):
+            ops.append(Conv2dOp(*params[:2], padding=module.padding[0], stride=module.stride[0]))
+            params = params[2:]
+        elif isinstance(module, nn.BatchNorm2d):
+            ops.append(BatchNormOp(*params[:2]))
+            params = params[2:]
+        elif isinstance(module, nn.ReLU):
+            ops.append(nn.ReLU(inplace=True))
+        elif isinstance(module, nn.MaxPool2d):
+            ops.append(nn.MaxPool2d(module.kernel_size, module.stride))
+        elif isinstance(module, Flatten):
+            ops.append(Flatten())
+        # elif isinstance(module, nn.Sequential):
+        #     params
+        else:
+            raise NotImplementedError("Module of type %s is not supported." % type(module))

@@ -46,12 +46,12 @@ class SimpleModelOperation(ModuleOperation):
         params = weight_to_param(weight, param_sizes(SimpleModel().parameters()))
 
         self.model = SequentialOp(
-            ConvOp(params[0], params[1]),
+            Conv2dOp(params[0], params[1]),
             nn.ReLU(inplace=True),
             MaxPool2dOp(2, 2),
             #DropoutOp(dropout_p, is2d=True),
 
-            ConvOp(params[2], params[3]),
+            Conv2dOp(params[2], params[3]),
             nn.ReLU(inplace=True),
             MaxPool2dOp(2, 2),
             #DropoutOp(dropout_p, is2d=True),

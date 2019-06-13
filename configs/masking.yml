@@ -2,6 +2,7 @@ title: "Trying to fit a masked minimum"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
+model_name: "simple"
 modules:
   models: ["model"]
   optims: ["optim"]
@@ -19,57 +20,6 @@ hp:
     good: 5
     bad: 5
 hpo:
-  num_parallel_experimens_per_gpu: 2
+  num_parallel_experimens_per_gpu: 6
   grid:
-    icon_file_path: [
-      "icons-resized/001-cancer.png",
-      "icons-resized/002-heart.png",
-      "icons-resized/003-air.png",
-      "icons-resized/004-om.png",
-      "icons-resized/005-leo.png",
-      "icons-resized/006-cross.png",
-      "icons-resized/007-moon.png",
-      "icons-resized/008-pentagram.png",
-      "icons-resized/009-aquarius.png",
-      "icons-resized/010-jupiter.png",
-      "icons-resized/011-copper.png",
-      "icons-resized/012-gemini.png",
-      "icons-resized/013-venus.png",
-      "icons-resized/014-crystal ball.png",
-      "icons-resized/015-earth.png",
-      "icons-resized/016-mars.png",
-      "icons-resized/017-sulphur.png",
-      "icons-resized/018-lotus.png",
-      "icons-resized/019-mercury.png",
-      "icons-resized/020-scorpio.png",
-      "icons-resized/021-crystal.png",
-      "icons-resized/022-oxygen.png",
-      "icons-resized/023-gemini.png",
-      "icons-resized/024-rune.png",
-      "icons-resized/025-water.png",
-      "icons-resized/026-aries.png",
-      "icons-resized/027-pluto.png",
-      "icons-resized/028-death.png",
-      "icons-resized/029-hand.png",
-      "icons-resized/030-rune.png",
-      "icons-resized/031-saturn.png",
-      "icons-resized/032-yin yang.png",
-      "icons-resized/033-pendulum.png",
-      "icons-resized/034-virgo.png",
-      "icons-resized/035-earth.png",
-      "icons-resized/036-life.png",
-      "icons-resized/037-libra.png",
-      "icons-resized/038-skull.png",
-      "icons-resized/039-warning.png",
-      "icons-resized/040-sun.png",
-      "icons-resized/041-star of david.png",
-      "icons-resized/042-ankh.png",
-      "icons-resized/043-hand.png",
-      "icons-resized/044-candle.png",
-      "icons-resized/045-taurus.png",
-      "icons-resized/046-capricorn.png",
-      "icons-resized/047-ceres.png",
-      "icons-resized/048-sagittarius.png",
-      "icons-resized/049-triangle.png",
-      "icons-resized/050-uranus.png"
-    ]
+    square_size: [3, 5, 10, 20, 30, 40, 50, 75, 100, 250]
