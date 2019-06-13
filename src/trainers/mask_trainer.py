@@ -26,21 +26,25 @@ class MaskTrainer(BaseTrainer):
     def __init__(self, config):
         super(MaskTrainer, self).__init__(config)
 
-        # self.mask = np.array(self.config.hp.mask)
-        self.mask = generate_square_mask(self.config.hp.square_size)
-        # project_path = self.config.firelab.project_path
-        # data_dir = os.path.join(project_path, self.config.data_dir)
-        # icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
-        # self.mask = np.array(icon > 0).astype(np.float)
-        # self.mask = make_mask_ternary(self.mask)
+        if self.config.mask_type == 'icon':
+            project_path = self.config.firelab.project_path
+            data_dir = os.path.join(project_path, self.config.data_dir)
+            icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
+            self.mask = np.array(icon > 0).astype(np.float)
+        elif self.config.mask_type == 'custom':
+            self.mask = np.array(self.config.mask)
+        elif self.config.mask_type == 'square':
+            self.mask = generate_square_mask(self.config.hp.square_size)
+            self.mask = make_mask_ternary(self.mask)
+        else:
+            raise NotImplementedError('Mask type is not supported')
+
         if self.config.get("model_name", "").lower() == "vgg":
             self.torch_model_cls = VGG11
             self.model_op_cls = VGG11Operation
         else:
             self.torch_model_cls = SimpleModel
             self.model_op_cls = SimpleModelOperation
-
-        assert False
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -78,12 +82,15 @@ class MaskTrainer(BaseTrainer):
         good_idx = self.model.get_class_idx(1).tolist()
         bad_idx = self.model.get_class_idx(0).tolist()
 
-        for i, j in random.sample(good_idx, min(len(good_idx), self.config.hp.num_cells_in_update.good)):
+        num_good_points_to_use = min(len(good_idx), self.config.hp.num_cells_in_update.good)
+        num_bad_points_to_use = min(len(bad_idx), self.config.hp.num_cells_in_update.bad)
+
+        for i, j in random.sample(good_idx, num_good_points_to_use):
             preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
             good_losses.append(self.criterion(preds, y).mean())
             good_accs.append((preds.argmax(dim=1) == y).float().mean())
 
-        for i, j in random.sample(bad_idx, min(len(bad_idx), self.config.hp.num_cells_in_update.bad)):
+        for i, j in random.sample(bad_idx, num_bad_points_to_use):
             preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
             bad_losses.append(self.criterion(preds, y).mean())
             bad_accs.append((preds.argmax(dim=1) == y).float().mean())
@@ -148,26 +155,22 @@ class MaskTrainer(BaseTrainer):
         fig = plt.figure(figsize=(20, 4))
 
         plt.subplot(141)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores],
-                            cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
+        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
         plt.title('Loss [test]')
         plt.colorbar(cntr)
 
         plt.subplot(142)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores],
-                            cmap="RdBu_r", levels=np.linspace(0.6, 0.9, 30))
+        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.6, 0.9, 30))
         plt.title('Accuracy [test]')
         plt.colorbar(cntr)
 
         plt.subplot(143)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores],
-                            cmap="RdBu_r", levels=100)
+        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=100)
         plt.title('Loss [test]')
         plt.colorbar(cntr)
 
         plt.subplot(144)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores],
-                            cmap="RdBu_r", levels=100)
+        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0, 1, 100))
         plt.title('Accuracy [test]')
         plt.colorbar(cntr)
 
