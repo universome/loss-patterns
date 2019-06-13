@@ -176,33 +176,15 @@ class MaskTrainer(BaseTrainer):
 
 
 def generate_square_mask(square_size):
-    assert square_size >= 7
-    # 0 0 0 0 0 0 0
-    # 0 1 1 1 1 1 0
-    # 0 1 0 0 0 1 0
-    # 0 1 0 2 0 1 0
-    # 0 1 0 0 0 1 0
-    # 0 1 1 1 1 1 0
-    # 0 0 0 0 0 0 0
+    assert square_size >= 3
 
-    row_1 = np.zeros(square_size)
+    mask = np.zeros((square_size, square_size))
+    mask[1:-1, 1] = 1
+    mask[1:-1, -2] = 1
+    mask[1, 1:-1] = 1
+    mask[-2, 1:-1] = 1
 
-    row_2 = np.ones(square_size)
-    row_2[0] = 0
-    row_2[-1] = 0
-
-    row_3 = np.zeros(square_size)
-    row_3[1] = 1
-    row_3[-2] = 1
-
-    row_4 = np.copy(row_3)
-    row_4[3:-3] = 2
-
-    return np.vstack([
-        row_1, row_2, row_3,
-        np.repeat(row_4[np.newaxis, :], square_size - 6, 0),
-        row_3, row_2, row_1
-    ]).astype(int)
+    return mask
 
 
 def make_mask_ternary(mask):
