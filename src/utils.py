@@ -82,7 +82,20 @@ def sample_on_square(center, z, r):
 
 
 def params_to_state_dict(params, keys):
-    return OrderedDict([(k,p) for k,p in zip(keys, params)])
+    state_dict = OrderedDict([])
+
+    for key in keys:
+        if 'running_mean' in key:
+            state_dict[key] = torch.zeros_like(list(state_dict.values())[-1])
+        elif 'running_var' in key:
+            state_dict[key] = torch.ones_like(list(state_dict.values())[-1])
+        elif 'num_batches_tracked' in key:
+            state_dict[key] = torch.zeros(1, device=params[0].device)
+        else:
+            state_dict[key] = params[0]
+            params = params[1:]
+
+    return state_dict
 
 
 def validate(model, dataloader, criterion) -> Tuple[float, float]:
@@ -103,7 +116,6 @@ def validate(model, dataloader, criterion) -> Tuple[float, float]:
 
 
 def validate_weights(weights, dataloader, model):
-    # model = SuperModel().to(device)
     params = weight_to_param(weights, param_sizes(model.parameters()))
     criterion = nn.CrossEntropyLoss(reduction='none')
     model.load_state_dict(params_to_state_dict(params, model.state_dict().keys()))
