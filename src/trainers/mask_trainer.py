@@ -1,5 +1,6 @@
 import os
 import math
+import time
 import random
 from itertools import chain
 from typing import List, Tuple
@@ -107,15 +108,21 @@ class MaskTrainer(BaseTrainer):
         self.visualize_minimum()
 
     def compute_mask_scores(self):
+        start = time.time()
+
         e1 = self.model.upper_left.to(self.config.firelab.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
         ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
         ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
 
-        dummy_model = SimpleModel().to(self.config.firelab.device_name)
-        weights = [[self.model.lower_left + t * e1 + s * e2 for s in ss] for t in ts]
-        scores = [[validate_weights(w, self.val_dataloader, dummy_model) for w in w_row] for w_row in tqdm(weights)]
+        # dummy_model = SimpleModel().to(self.config.firelab.device_name)
+
+        dummy_model = VGG11().to(self.config.firelab.device_name)
+        scores = [[validate_weights(self.model.lower_left + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in ts]
+        # scores = [[validate_weights(w, self.val_dataloader, dummy_model) for w in w_row] for w_row in tqdm(weights)]
+
+        print('Scoring took', time.time() - start)
 
         return ss, ts, scores
 
