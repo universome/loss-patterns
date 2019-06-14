@@ -29,7 +29,7 @@ class MaskModel(ModuleOperation):
         if self.is_good_mode:
             w = self.sample_class_weight(1)
         else:
-            w = self.sample_class_weight(0)
+            w = self.sample_class_weight(-1)
 
         return self.run_from_weights(w, x)
 
@@ -40,7 +40,7 @@ class MaskModel(ModuleOperation):
         # i = random.randint(0, self.mask.shape[0] - 1)
         # j = random.randint(0, self.mask.shape[1] - 1)
         if np.random.rand() > 0.5:
-            return self.sample_class_idx(0)
+            return self.sample_class_idx(-1)
         else:
             return self.sample_class_idx(1)
 

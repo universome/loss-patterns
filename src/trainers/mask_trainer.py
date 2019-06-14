@@ -37,14 +37,16 @@ class MaskTrainer(BaseTrainer):
             self.mask = generate_square_mask(self.config.hp.square_size)
             self.mask = make_mask_ternary(self.mask)
         else:
-            raise NotImplementedError('Mask type is not supported')
+            raise NotImplementedError('Mask type %s is not supported' % self.config.mask_type)
 
-        if self.config.get("model_name", "").lower() == "vgg":
+        if self.config.model_name == "vgg":
             self.torch_model_cls = VGG11
             self.model_op_cls = VGG11Operation
-        else:
+        elif self.config.model_name == "simple":
             self.torch_model_cls = SimpleModel
             self.model_op_cls = SimpleModelOperation
+        else:
+            raise NotImplementedError("Model %s is not supported" % self.config.model_name)
 
     def init_dataloaders(self):
         batch_size = self.config.hp.batch_size
@@ -80,7 +82,7 @@ class MaskTrainer(BaseTrainer):
         bad_accs = []
 
         good_idx = self.model.get_class_idx(1).tolist()
-        bad_idx = self.model.get_class_idx(0).tolist()
+        bad_idx = self.model.get_class_idx(-1).tolist()
 
         num_good_points_to_use = min(len(good_idx), self.config.hp.num_cells_in_update.good)
         num_bad_points_to_use = min(len(bad_idx), self.config.hp.num_cells_in_update.bad)
@@ -131,8 +133,8 @@ class MaskTrainer(BaseTrainer):
         e1 = self.model.upper_left.to(self.config.firelab.device_name)
         e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
 
-        ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
-        ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=30)
+        ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
+        ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
 
         # dummy_model = SimpleModel().to(self.config.firelab.device_name)
 
@@ -209,7 +211,10 @@ def generate_square_mask(square_size):
 
 
 def make_mask_ternary(mask):
-    "Sets those 0s, which do not have 1s around to 2"
+    """
+    Takes 0/1 mask and makes -1/0/1 mask, setting 0 to -1,
+    and those -1, which are far away from 1 to 0 (so we do not look at them)
+    """
     useless_zeros:List[Tuple[int, int]] = []
 
     for i in range(mask.shape[0]):
@@ -223,5 +228,9 @@ def make_mask_ternary(mask):
 
     result = np.copy(mask)
     result[[i for i,j in useless_zeros], [j for i,j in useless_zeros]] = 2
+
+    # Convert 0/1/2 mask to -1/0/1 mask, because it's more sensible
+    result[result == 0] = -1
+    result[result == 2] = 0
 
     return result

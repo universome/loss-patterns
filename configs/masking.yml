@@ -2,7 +2,7 @@ title: "Trying to fit a masked minimum"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
-model_name: "vgg"
+model_name: "simple"
 mask_type: "square"
 modules:
   models: ["model"]
@@ -21,6 +21,6 @@ hp:
     good: 5
     bad: 5
 hpo:
-  num_parallel_experimens_per_gpu: 2
+  num_parallel_experimens_per_gpu: 10
   grid:
-    square_size: [3, 5, 10, 15, 25, 50]
+    square_size: [3, 5, 7, 10, 15, 25, 50, 75, 100, 150]
