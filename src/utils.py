@@ -53,16 +53,29 @@ def weight_to_param(w, sizes):
     return params
 
 
-def orthogonalize(theta, r, adjust_len=False):
-    theta = theta.double()
-    r = r.double()
-    #z_tilde = theta * torch.norm(r).pow(2) - r * torch.dot(theta, r)
-    z = theta - r * (torch.dot(theta, r) / torch.norm(r).pow(2))
+def orthogonalize(v1, v2, adjust_len_to_v1=False, adjust_len_to_v2=False):
+    """
+    Performs Gram-Schmidt orthogonalization. Returns vector, orthogonal to v1
+    If adjust_len_to_v1/adjust_len_to_v2 is provided,
+    then it will be have the same norm as v1/v2
 
-    if adjust_len:
-        z = z / torch.norm(z) * torch.norm(r)
+    TODO: add tests
+    """
+    assert not (adjust_len_to_v1 and adjust_len_to_v2), \
+        "Impossible to adjust length to two vectors at the same time"
 
-    return z.float()
+    v1 = v1.double()
+    v2 = v2.double()
+
+    #w = v1 * torch.norm(v2).pow(2) - v2 * torch.dot(v1, v2)
+    v3 = v2 - v1 * (torch.dot(v2, v1) / torch.norm(v1).pow(2))
+
+    if adjust_len_to_v1:
+        v3 = v3 * (torch.norm(v3) / torch.norm(v1))
+    elif adjust_len_to_v2:
+        v3 = v3 * (torch.norm(v3) / torch.norm(v2))
+
+    return v3.float()
 
 
 def sample_on_circle(center, z, r, angle_range=(0, 2 * np.pi)):
