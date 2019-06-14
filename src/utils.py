@@ -56,8 +56,8 @@ def weight_to_param(w, sizes):
 def orthogonalize(v1, v2, adjust_len_to_v1=False, adjust_len_to_v2=False):
     """
     Performs Gram-Schmidt orthogonalization. Returns vector, orthogonal to v1
-    If adjust_len_to_v1/adjust_len_to_v2 is provided,
-    then it will be have the same norm as v1/v2
+    If adjust_len_to_v1 (or adjust_len_to_v2) is provided,
+    then it will have the same norm as v1 (or v2)
 
     TODO: add tests
     """
@@ -71,9 +71,9 @@ def orthogonalize(v1, v2, adjust_len_to_v1=False, adjust_len_to_v2=False):
     v3 = v2 - v1 * (torch.dot(v2, v1) / torch.norm(v1).pow(2))
 
     if adjust_len_to_v1:
-        v3 = v3 * (torch.norm(v3) / torch.norm(v1))
+        v3 = v3 * (torch.norm(v1) / torch.norm(v3))
     elif adjust_len_to_v2:
-        v3 = v3 * (torch.norm(v3) / torch.norm(v2))
+        v3 = v3 * (torch.norm(v2) / torch.norm(v3))
 
     return v3.float()
 

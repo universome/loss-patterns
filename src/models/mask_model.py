@@ -31,10 +31,6 @@ class MaskModel(ModuleOperation):
         return orthogonalize(self.right, self.up_param, adjust_len_to_v1=True)
 
     def __call__(self, x):
-        #if self.training:
-        #    w = self.cell_center(*self.sample_idx())
-        #else:
-        #    w = self.cell_center(2, 4)
         if self.is_good_mode:
             w = self.sample_class_weight(1)
         else:
@@ -46,8 +42,6 @@ class MaskModel(ModuleOperation):
         return self.model_op_cls(w)(x)
 
     def sample_idx(self) -> Tuple[int, int]:
-        # i = random.randint(0, self.mask.shape[0] - 1)
-        # j = random.randint(0, self.mask.shape[1] - 1)
         if np.random.rand() > 0.5:
             return self.sample_class_idx(-1)
         else:

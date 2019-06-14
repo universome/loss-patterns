@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import ToTensor
@@ -19,7 +20,7 @@ from skimage.io import imread
 
 from src.models import MaskModel, SimpleModel, SimpleModelOperation
 from src.models.vgg import VGG11, VGG11Operation
-from src.utils import validate, validate_weights, orthogonalize
+from src.utils import validate, validate_weights, orthogonalize, weight_to_param, param_sizes
 
 
 class MaskTrainer(BaseTrainer):
@@ -59,8 +60,9 @@ class MaskTrainer(BaseTrainer):
         self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=3, shuffle=True)
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
-    def before_start_hook(self):
+    def before_training_start_hook(self):
         self.plot_mask()
+        self.plot_all_weights_histograms()
 
     def init_models(self):
         self.model = MaskModel(self.mask, self.torch_model_cls, self.model_op_cls, self.config.hp.scaling)
@@ -109,6 +111,7 @@ class MaskTrainer(BaseTrainer):
 
         self.optim.zero_grad()
         final_loss.backward()
+        clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
 
         self.writer.add_scalar('bad/train/loss', bad_losses.mean().mean().item(), self.num_iters_done)
@@ -118,16 +121,16 @@ class MaskTrainer(BaseTrainer):
 
         # Tracking stats
         self.writer.add_scalar('Stats/ort', torch.dot(self.model.right, self.model.up).abs().item(), self.num_iters_done)
-        self.writer.add_scalars('Stats/lengths', {
-            'right': self.model.right.norm(),
-            'up': self.model.up.norm(),
-        }, self.num_iters_done)
+        # self.writer.add_scalars('lengths', {
+        #     'right': self.model.right.norm(),
+        #     'up': self.model.up.norm(),
+        # }, self.num_iters_done)
+        self.writer.add_scalar('Stats/lengths/right', self.model.right.norm(), self.num_iters_done)
+        self.writer.add_scalar('Stats/lengths/up', self.model.up.norm(), self.num_iters_done)
 
-        self.writer.add_scalars('Stats/grad_norms', {
-            'origin': self.model.origin.grad.norm().item(),
-            'right_param': self.model.right_param.grad.norm().item(),
-            'up_param': self.model.up_param.grad.norm().item(),
-        }, self.num_iters_done)
+        self.writer.add_scalar('Stats/grad_norms/origin', self.model.origin.grad.norm().item(), self.num_iters_done)
+        self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
+        self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
 
     def on_training_done(self):
         self.visualize_minimum()
@@ -136,13 +139,13 @@ class MaskTrainer(BaseTrainer):
         start = time.time()
 
         e1 = self.model.up.to(self.config.firelab.device_name)
-        e2 = self.model.left.to(self.config.firelab.device_name)
+        e2 = self.model.right.to(self.config.firelab.device_name)
 
         ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
         ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
 
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.lower_left + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in tqdm(ts)]
+        scores = [[validate_weights(self.model.origin + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in tqdm(ts)]
 
         print('Scoring took', time.time() - start)
 
@@ -192,12 +195,29 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_iters_done)
         self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_iters_done)
 
+        self.plot_all_weights_histograms()
+
     def plot_mask(self):
         fig = plt.figure(figsize=(5, 5))
         mask_img = np.copy(self.mask)
         mask_img[mask_img == 2] = 0.5
         plt.imshow(mask_img, cmap='gray')
         self.writer.add_figure('Mask', fig, self.num_iters_done)
+
+    def plot_params_histograms(self, w, subtag:str):
+        dummy_model = self.torch_model_cls()
+        params = weight_to_param(w, param_sizes(dummy_model.parameters()))
+        tags = ['Weights_hist/{}/{}'.format(i, subtag) for i in range(len(params))]
+
+        for tag, param in zip(tags, params):
+            self.writer.add_histogram(tag, param, self.num_iters_done)
+
+    def plot_all_weights_histograms(self):
+        self.plot_params_histograms(self.model.origin, 'origin')
+        self.plot_params_histograms(self.model.right, 'right')
+        self.plot_params_histograms(self.model.up, 'up')
+        self.plot_params_histograms(self.model.origin + self.model.right, 'origin+right')
+        self.plot_params_histograms(self.model.origin + self.model.up, 'origin+up')
 
 
 def generate_square_mask(square_size):
