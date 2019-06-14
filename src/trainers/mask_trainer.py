@@ -104,12 +104,8 @@ class MaskTrainer(BaseTrainer):
 
         good_loss = good_losses.mean()
         bad_loss = bad_losses.clamp(0, self.config.hp.clip_threshold).mean()
-
-        ort_reg, norm_reg = self.model.compute_reg()
-        right_len = self.model.lower_right.norm()
-
         final_loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
-        final_loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
+        # final_loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
 
         self.optim.zero_grad()
         final_loss.backward()
@@ -120,9 +116,18 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('good/train/loss', good_losses.mean().item(), self.num_iters_done)
         self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)
 
-        self.writer.add_scalar('Reg/ort', ort_reg.item(), self.num_iters_done)
-        self.writer.add_scalar('Reg/norm', norm_reg.item(), self.num_iters_done)
-        self.writer.add_scalar('Reg/right_len', right_len.item(), self.num_iters_done)
+        # Tracking stats
+        self.writer.add_scalar('Stats/ort', torch.dot(self.model.right, self.model.up).abs().item(), self.num_iters_done)
+        self.writer.add_scalars('Stats/lengths', {
+            'right': self.model.right.norm(),
+            'up': self.model.up.norm(),
+        }, self.num_iters_done)
+
+        self.writer.add_scalars('Stats/grad_norms', {
+            'origin': self.model.origin.grad.norm().item(),
+            'right_param': self.model.right_param.grad.norm().item(),
+            'up_param': self.model.up_param.grad.norm().item(),
+        }, self.num_iters_done)
 
     def on_training_done(self):
         self.visualize_minimum()
@@ -130,17 +135,14 @@ class MaskTrainer(BaseTrainer):
     def compute_mask_scores(self):
         start = time.time()
 
-        e1 = self.model.upper_left.to(self.config.firelab.device_name)
-        e2 = orthogonalize(self.model.lower_right, e1, adjust_len=True)
+        e1 = self.model.up.to(self.config.firelab.device_name)
+        e2 = self.model.left.to(self.config.firelab.device_name)
 
         ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
         ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
 
-        # dummy_model = SimpleModel().to(self.config.firelab.device_name)
-
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
         scores = [[validate_weights(self.model.lower_left + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in tqdm(ts)]
-        # scores = [[validate_weights(w, self.val_dataloader, dummy_model) for w in w_row] for w_row in tqdm(weights)]
 
         print('Scoring took', time.time() - start)
 

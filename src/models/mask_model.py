@@ -7,7 +7,7 @@ import torch.nn as nn
 import numpy as np
 
 from src.models.module_op import ModuleOperation
-from src.utils import weight_vector
+from src.utils import weight_vector, orthogonalize
 
 
 class MaskModel(ModuleOperation):
@@ -15,11 +15,20 @@ class MaskModel(ModuleOperation):
         self.mask = mask
         self.torch_model_cls = torch_model_cls
         self.model_op_cls = model_op_cls
-        self.lower_left = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
-        self.upper_left = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
-        self.lower_right = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
         self.scaling = scaling
         self.is_good_mode = True
+
+        self.origin = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.right_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.up_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+
+    @property
+    def right(self):
+        return self.right_param - self.origin
+
+    @property
+    def up(self):
+        return orthogonalize(self.right, self.up_param, adjust_len_to_v1=True)
 
     def __call__(self, x):
         #if self.training:
@@ -57,28 +66,21 @@ class MaskModel(ModuleOperation):
         return self.cell_center(*self.sample_class_idx(cls_idx))
 
     def cell_center(self, i, j):
-        #return self.lower_left + (i / self.mask.shape[0]) * self.upper_left + (j / self.mask.shape[1]) * self.lower_right
-        return self.lower_left + self.scaling * (i * self.upper_left + j * self.lower_right)
-
-    def compute_reg(self):
-        orthogonalization_reg = torch.dot(self.lower_right, self.upper_left).pow(2)
-        norm_reg = (self.upper_left.norm() - self.lower_right.norm()).pow(2)
-
-        return orthogonalization_reg, norm_reg
+        return self.origin + self.scaling * (i * self.up + j * self.right)
 
     def to(self, *args, **kwargs):
-        self.lower_left = nn.Parameter(self.lower_left.to(*args, **kwargs))
-        self.upper_left = nn.Parameter(self.upper_left.to(*args, **kwargs))
-        self.lower_right = nn.Parameter(self.lower_right.to(*args, **kwargs))
+        self.origin = nn.Parameter(self.origin.to(*args, **kwargs))
+        self.right_param = nn.Parameter(self.right_param.to(*args, **kwargs))
+        self.up_param = nn.Parameter(self.up_param.to(*args, **kwargs))
 
         return self
 
     def parameters(self):
-        return [self.lower_left, self.upper_left, self.lower_right]
+        return [self.origin, self.right_param, self.up_param]
 
     def state_dict(self):
         return OrderedDict([
-            ('lower_left', self.lower_left.cpu().numpy()),
-            ('upper_left', self.upper_left.cpu().numpy()),
-            ('lower_right', self.lower_right.cpu().numpy()),
+            ('origin', self.origin.cpu().numpy()),
+            ('right_param', self.right_param.cpu().numpy()),
+            ('up_param', self.up_param.cpu().numpy()),
         ])

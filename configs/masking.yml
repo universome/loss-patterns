@@ -7,7 +7,7 @@ mask_type: "square"
 modules:
   models: ["model"]
   optims: ["optim"]
-max_num_epochs: 10
+max_num_epochs: 100
 val_freq_epochs: 1
 hp:
   batch_size: 256
