@@ -86,8 +86,8 @@ class MaskTrainer(BaseTrainer):
         good_idx = self.model.get_class_idx(1).tolist()
         bad_idx = self.model.get_class_idx(-1).tolist()
 
-        num_good_points_to_use = min(len(good_idx), self.config.hp.num_cells_in_update.good)
-        num_bad_points_to_use = min(len(bad_idx), self.config.hp.num_cells_in_update.bad)
+        num_good_points_to_use = min(len(good_idx), self.config.hp.num_good_cells_per_update)
+        num_bad_points_to_use = min(len(bad_idx), self.config.hp.num_bad_cells_per_update)
 
         for i, j in random.sample(good_idx, num_good_points_to_use):
             preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
@@ -138,18 +138,14 @@ class MaskTrainer(BaseTrainer):
     def compute_mask_scores(self):
         start = time.time()
 
-        e1 = self.model.up.to(self.config.firelab.device_name)
-        e2 = self.model.right.to(self.config.firelab.device_name)
-
-        ts = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
-        ss = self.config.hp.scaling * np.linspace(-1, max(self.mask.shape), num=20)
+        i_idx = np.arange(self.mask.shape[0])
+        j_idx = np.arange(self.mask.shape[1])
 
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.origin + t * e1 + s * e2, self.val_dataloader, dummy_model) for s in ss] for t in tqdm(ts)]
-
+        scores = [[validate_weights(self.model.cell_center(i, j), self.val_dataloader, dummy_model) for j in j_idx] for i in i_idx]
         print('Scoring took', time.time() - start)
 
-        return ss, ts, scores
+        return i_idx, j_idx, scores
 
     def visualize_minimum(self):
         ss, ts, scores = self.compute_mask_scores()
@@ -167,7 +163,7 @@ class MaskTrainer(BaseTrainer):
         plt.colorbar(cntr)
 
         plt.subplot(142)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.6, 0.9, 30))
+        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
         plt.title('Accuracy [test]')
         plt.colorbar(cntr)
 
@@ -207,17 +203,15 @@ class MaskTrainer(BaseTrainer):
     def plot_params_histograms(self, w, subtag:str):
         dummy_model = self.torch_model_cls()
         params = weight_to_param(w, param_sizes(dummy_model.parameters()))
-        tags = ['Weights_hist/{}/{}'.format(i, subtag) for i in range(len(params))]
+        tags = ['Weights_histogram_{}/{}'.format(i, subtag) for i in range(len(params))]
 
         for tag, param in zip(tags, params):
             self.writer.add_histogram(tag, param, self.num_iters_done)
 
     def plot_all_weights_histograms(self):
-        self.plot_params_histograms(self.model.origin, 'origin')
-        self.plot_params_histograms(self.model.right, 'right')
-        self.plot_params_histograms(self.model.up, 'up')
         self.plot_params_histograms(self.model.origin + self.model.right, 'origin+right')
         self.plot_params_histograms(self.model.origin + self.model.up, 'origin+up')
+        self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin+up+right')
 
 
 def generate_square_mask(square_size):
