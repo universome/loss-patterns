@@ -16,6 +16,7 @@ hp:
   clip_threshold: 2
   grad_clip_threshold: 100.
   negative_loss_coef: 1.
+  should_center_origin: true
   # scaling: 1.
   square_size: 30
   num_good_cells_per_update: 5

@@ -65,7 +65,9 @@ class MaskTrainer(BaseTrainer):
         self.plot_all_weights_histograms()
 
     def init_models(self):
-        self.model = MaskModel(self.mask, self.torch_model_cls, self.model_op_cls, self.config.hp.scaling)
+        self.model = MaskModel(
+            self.mask, self.torch_model_cls, self.model_op_cls,
+            scaling=self.config.hp.scaling, should_center_origin=self.config.hp.should_center_origin)
         self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):
