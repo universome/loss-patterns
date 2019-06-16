@@ -60,10 +60,6 @@ class MaskTrainer(BaseTrainer):
         self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=3, shuffle=True)
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
-    def before_training_start_hook(self):
-        self.plot_mask()
-        self.plot_all_weights_histograms()
-
     def init_models(self):
         self.model = MaskModel(
             self.mask, self.torch_model_cls, self.model_op_cls,
@@ -134,7 +130,11 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
 
-    def on_training_done(self):
+    def before_training_hook(self):
+        self.plot_mask()
+        self.plot_all_weights_histograms()
+
+    def after_training_hook(self):
         self.visualize_minimum()
 
     def compute_mask_scores(self):
@@ -145,7 +145,7 @@ class MaskTrainer(BaseTrainer):
 
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
         scores = [[validate_weights(self.model.cell_center(i, j), self.val_dataloader, dummy_model) for j in j_idx] for i in i_idx]
-        print('Scoring took', time.time() - start)
+        self.logger.info(f'Scoring took {time.time() - start}')
 
         return i_idx, j_idx, scores
 

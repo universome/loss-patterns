@@ -76,7 +76,7 @@ class LineTrainer(BaseTrainer):
         self.writer.add_scalar('Val/loss', clf_loss.item(), self.num_iters_done)
         self.writer.add_scalar('Val/acc', acc.item(), self.num_iters_done)
 
-    def on_training_done(self):
+    def after_training_hook(self):
         self.visualize_linerp()
         self.visualize_entropy_linerp()
 

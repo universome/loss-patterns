@@ -140,6 +140,6 @@ class ElbowTrainer(BaseTrainer):
         for i, w in enumerate(get_weights_linerp(self.w_1, self.w_2)):
             self.writer.add_histogram('Weights histogram', w.detach().cpu(), i)
 
-    def on_training_done(self):
+    def after_training_hook(self):
         self.visualize_linerps()
         self.visualize_entropy_linerps()
