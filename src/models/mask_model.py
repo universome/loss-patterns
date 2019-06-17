@@ -11,7 +11,8 @@ from src.utils import weight_vector, orthogonalize
 
 
 class MaskModel(ModuleOperation):
-    def __init__(self, mask:List[List[int]], torch_model_cls, model_op_cls, scaling:float=1., should_center_origin:bool=False):
+    def __init__(self, mask:List[List[int]], torch_model_cls, model_op_cls,
+                       scaling:float=1., should_center_origin:bool=False, parametrization_type:str="simple"):
         """
         @params
             - should_center_origin: specifies, if our origin should be in the center of the mask
@@ -23,18 +24,37 @@ class MaskModel(ModuleOperation):
         self.scaling = scaling
         self.is_good_mode = True
         self.should_center_origin = should_center_origin
+        self.parametrization_type = parametrization_type
 
-        self.origin = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.origin_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
         self.right_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
         self.up_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
 
     @property
+    def origin(self):
+        return self.origin_param
+
+    @property
     def right(self):
-        return self.right_param - self.origin
+        if self.parametrization_type == 'simple':
+            return self.right_param
+        elif self.parametrization_type == 'difference':
+            return self.right_param - self.origin_param
+        elif self.parametrization_type == 'up_orthogonal':
+            return self.right_param - self.origin
+        else:
+            raise NotImplementedError(f'Unknown parametrization type {self.parametrization_type}')
 
     @property
     def up(self):
-        return orthogonalize(self.right, self.up_param, adjust_len_to_v1=True)
+        if self.parametrization_type == 'simple':
+            return self.up_param
+        elif self.parametrization_type == 'difference':
+            return self.up_param - self.origin_param
+        elif self.parametrization_type == 'up_orthogonal':
+            return orthogonalize(self.right, self.up_param, adjust_len_to_v1=True)
+        else:
+            raise NotImplementedError(f'Unknown parametrization type {self.parametrization_type}')
 
     def __call__(self, x):
         if self.is_good_mode:
@@ -63,28 +83,34 @@ class MaskModel(ModuleOperation):
         return pos_idx
 
     def sample_class_weight(self, cls_idx:int):
-        return self.cell_center(*self.sample_class_idx(cls_idx))
+        return self.compute_point(*self.sample_class_idx(cls_idx))
 
-    def cell_center(self, i, j):
+    def compute_point(self, x, y):
         if self.should_center_origin:
-            i -= (self.mask.shape[0] // 2)
-            j -= (self.mask.shape[1] // 2)
+            x -= (self.mask.shape[0] // 2)
+            y -= (self.mask.shape[1] // 2)
 
-        return self.origin + self.scaling * (i * self.up + j * self.right)
+        return self.origin + self.scaling * (x * self.up + y * self.right)
+
+    def compute_ort_reg(self):
+        return torch.dot(self.up, self.right).abs()
+
+    def compute_norm_reg(self):
+        return (self.up.norm() - self.right.norm()).abs()
 
     def to(self, *args, **kwargs):
-        self.origin = nn.Parameter(self.origin.to(*args, **kwargs))
+        self.origin_param = nn.Parameter(self.origin_param.to(*args, **kwargs))
         self.right_param = nn.Parameter(self.right_param.to(*args, **kwargs))
         self.up_param = nn.Parameter(self.up_param.to(*args, **kwargs))
 
         return self
 
     def parameters(self):
-        return [self.origin, self.right_param, self.up_param]
+        return [self.origin_param, self.right_param, self.up_param]
 
     def state_dict(self):
         return OrderedDict([
-            ('origin', self.origin.cpu().numpy()),
+            ('origin', self.origin_param.cpu().numpy()),
             ('right_param', self.right_param.cpu().numpy()),
             ('up_param', self.up_param.cpu().numpy()),
         ])

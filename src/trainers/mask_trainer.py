@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
+import yaml
 
 from src.models import MaskModel, SimpleModel, SimpleModelOperation
 from src.models.vgg import VGG11, VGG11Operation
@@ -63,7 +64,9 @@ class MaskTrainer(BaseTrainer):
     def init_models(self):
         self.model = MaskModel(
             self.mask, self.torch_model_cls, self.model_op_cls,
-            scaling=self.config.hp.scaling, should_center_origin=self.config.hp.should_center_origin)
+            scaling=self.config.hp.scaling,
+            should_center_origin=self.config.hp.should_center_origin,
+            parametrization_type=self.config.hp.parametrization_type)
         self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):
@@ -88,12 +91,12 @@ class MaskTrainer(BaseTrainer):
         num_bad_points_to_use = min(len(bad_idx), self.config.hp.num_bad_cells_per_update)
 
         for i, j in random.sample(good_idx, num_good_points_to_use):
-            preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
+            preds = self.model.run_from_weights(self.model.compute_point(i,j), x)
             good_losses.append(self.criterion(preds, y).mean())
             good_accs.append((preds.argmax(dim=1) == y).float().mean())
 
         for i, j in random.sample(bad_idx, num_bad_points_to_use):
-            preds = self.model.run_from_weights(self.model.cell_center(i,j), x)
+            preds = self.model.run_from_weights(self.model.compute_point(i,j), x)
             bad_losses.append(self.criterion(preds, y).mean())
             bad_accs.append((preds.argmax(dim=1) == y).float().mean())
 
@@ -102,13 +105,22 @@ class MaskTrainer(BaseTrainer):
         bad_losses = torch.stack(bad_losses)
         bad_accs = torch.stack(bad_accs)
 
+        # Main losses
         good_loss = good_losses.mean()
         bad_loss = bad_losses.clamp(0, self.config.hp.clip_threshold).mean()
-        final_loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
-        # final_loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
+        loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
+
+        # Adding regularization
+        if self.config.hp.parametrization_type != "up_orthogonal":
+            ort_reg = self.model.compute_ort_reg()
+            norm_reg = self.model.compute_norm_reg()
+            loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
+
+            self.writer.add_scalar('Reg/ort', ort_reg.item(), self.num_iters_done)
+            self.writer.add_scalar('Reg/norm', norm_reg.item(), self.num_iters_done)
 
         self.optim.zero_grad()
-        final_loss.backward()
+        loss.backward()
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
 
@@ -118,7 +130,6 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)
 
         # Tracking stats
-        self.writer.add_scalar('Stats/ort', torch.dot(self.model.right, self.model.up).abs().item(), self.num_iters_done)
         # self.writer.add_scalars('lengths', {
         #     'right': self.model.right.norm(),
         #     'up': self.model.up.norm(),
@@ -133,6 +144,7 @@ class MaskTrainer(BaseTrainer):
     def before_training_hook(self):
         self.plot_mask()
         self.plot_all_weights_histograms()
+        self.write_config()
 
     def after_training_hook(self):
         self.visualize_minimum()
@@ -140,22 +152,25 @@ class MaskTrainer(BaseTrainer):
     def compute_mask_scores(self):
         start = time.time()
 
-        i_idx = np.arange(self.mask.shape[0])
-        j_idx = np.arange(self.mask.shape[1])
+        pad = self.config.get('solution_vis.padding', 1)
+        x_num_points = self.config.get('solution_vis.granularity.x', self.mask.shape[0])
+        y_num_points = self.config.get('solution_vis.granularity.y', self.mask.shape[1])
+        xs = np.linspace(-pad, self.mask.shape[0] + pad, x_num_points)
+        ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.cell_center(i, j), self.val_dataloader, dummy_model) for j in j_idx] for i in i_idx]
+        scores = [[validate_weights(self.model.compute_point(x, y), self.val_dataloader, dummy_model) for y in ys] for x in xs]
         self.logger.info(f'Scoring took {time.time() - start}')
 
-        return i_idx, j_idx, scores
+        return xs, ys, scores
 
     def visualize_minimum(self):
-        ss, ts, scores = self.compute_mask_scores()
-        fig = self.build_minimum_figure(ss, ts, scores)
+        xs, ys, scores = self.compute_mask_scores()
+        fig = self.build_minimum_figure(xs, ys, scores)
         self.writer.add_figure('Minimum', fig, self.num_iters_done)
 
-    def build_minimum_figure(self, ss, ts, scores):
-        X, Y = np.meshgrid(ss, ts)
+    def build_minimum_figure(self, xs, ys, scores):
+        X, Y = np.meshgrid(xs, ys)
 
         fig = plt.figure(figsize=(20, 4))
 
@@ -214,6 +229,11 @@ class MaskTrainer(BaseTrainer):
         self.plot_params_histograms(self.model.origin + self.model.right, 'origin+right')
         self.plot_params_histograms(self.model.origin + self.model.up, 'origin+up')
         self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin+up+right')
+
+    def write_config(self):
+        config_yml = yaml.safe_dump(self.config.to_dict())
+        config_yml = config_yml.replace('\n', '  \n') # Because tensorboard uses markdown
+        self.writer.add_text('Config', config_yml, self.num_iters_done)
 
 
 def generate_square_mask(square_size):
