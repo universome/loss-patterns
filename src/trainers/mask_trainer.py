@@ -58,8 +58,8 @@ class MaskTrainer(BaseTrainer):
         data_train = FashionMNIST(data_dir, download=True, train=True, transform=ToTensor())
         data_test = FashionMNIST(data_dir, download=True, train=False, transform=ToTensor())
 
-        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=3, shuffle=True)
-        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
+        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=0, shuffle=True)
+        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=0, shuffle=False)
 
     def init_models(self):
         self.model = MaskModel(
@@ -107,7 +107,7 @@ class MaskTrainer(BaseTrainer):
 
         # Main losses
         good_loss = good_losses.mean()
-        bad_loss = bad_losses.clamp(0, self.config.hp.clip_threshold).mean()
+        bad_loss = bad_losses.clamp(0, self.config.hp.neg_loss_clip_threshold).mean()
         loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
 
         # Adding regularization
@@ -147,6 +147,8 @@ class MaskTrainer(BaseTrainer):
         self.write_config()
 
     def after_training_hook(self):
+        if self.is_explicitly_stopped: return
+
         self.visualize_minimum()
 
     def compute_mask_scores(self):
@@ -210,6 +212,9 @@ class MaskTrainer(BaseTrainer):
 
         self.plot_all_weights_histograms()
 
+        if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
+            self.stop()
+
     def plot_mask(self):
         fig = plt.figure(figsize=(5, 5))
         mask_img = np.copy(self.mask)
@@ -226,9 +231,9 @@ class MaskTrainer(BaseTrainer):
             self.writer.add_histogram(tag, param, self.num_iters_done)
 
     def plot_all_weights_histograms(self):
-        self.plot_params_histograms(self.model.origin + self.model.right, 'origin+right')
-        self.plot_params_histograms(self.model.origin + self.model.up, 'origin+up')
-        self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin+up+right')
+        self.plot_params_histograms(self.model.origin + self.model.right, 'origin_right')
+        self.plot_params_histograms(self.model.origin + self.model.up, 'origin_up')
+        self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin_up_right')
 
     def write_config(self):
         config_yml = yaml.safe_dump(self.config.to_dict())
