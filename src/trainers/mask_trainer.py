@@ -213,7 +213,11 @@ class MaskTrainer(BaseTrainer):
         self.plot_all_weights_histograms()
 
         if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
-            self.stop()
+            self.stop(f'Good val accuracy is too low: {good_val_acc}')
+        elif bad_val_acc > self.config.get('bad_val_acc_stop_threshold', 1.):
+            self.stop(f'Bad val accuracy is too high: {bad_val_acc}')
+        else:
+            pass
 
     def plot_mask(self):
         fig = plt.figure(figsize=(5, 5))

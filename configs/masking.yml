@@ -8,32 +8,46 @@ modules:
   models: ["model"]
   optims: ["optim"]
 logging:
-  training_progress: False
+  training_progress: True
 max_num_epochs: 100
 # max_num_iters: 1
 good_val_acc_stop_threshold: 0.2
+bad_val_acc_stop_threshold: 0.9
 val_freq_epochs: 1
 solution_vis:
   granularity:
-    x: 30
-    y: 30
-  padding: 5
+    x: 50
+    y: 50
+  padding: 20
 hp:
   norm_reg_coef: 1.
   ort_reg_coef: 1.
-hpo:
-  num_parallel_experiments_per_gpu: 5
-  scheme: "random-search"
-  num_experiments: 500
-  grid:
-    scaling: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1., 2.5]
-    num_good_cells_per_update: [1, 5, 25, 50]
-    num_bad_cells_per_update: [1, 5, 25, 50]
-    negative_loss_coef: [0.1, 0.5, 1., 2., 5.]
-    neg_loss_clip_threshold: [1, 5, 10, 100]
-    grad_clip_threshold: [1, 5, 10, 100]
-    batch_size: [256, 512]
-    parametrization_type: ["simple", "difference", "up_orthogonal"]
-    should_center_origin: [true, false]
-    square_size: [30, 50, 100]
-    lr: [0.1, 0.01, 0.001, 0.0001]
+  batch_size: 256
+  grad_clip_threshold: 100
+  lr: 0.0001
+  neg_loss_clip_threshold: 10
+  negative_loss_coef: 2.0
+  norm_reg_coef: 1.0
+  num_bad_cells_per_update: 25
+  num_good_cells_per_update: 25
+  ort_reg_coef: 1.0
+  parametrization_type: "up_orthogonal"
+  scaling: 0.2
+  should_center_origin: false
+  square_size: 50
+# hpo:
+#   num_parallel_experiments_per_gpu: 5
+#   scheme: "random-search"
+#   num_experiments: 1000
+#   grid:
+#     scaling: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1., 2.5]
+#     num_good_cells_per_update: [1, 5, 25, 50]
+#     num_bad_cells_per_update: [1, 5, 25, 50]
+#     negative_loss_coef: [0.1, 0.5, 1., 2., 5.]
+#     neg_loss_clip_threshold: [1, 5, 10, 100]
+#     grad_clip_threshold: [1, 5, 10, 100]
+#     batch_size: [256, 512]
+#     parametrization_type: ["simple", "difference", "up_orthogonal"]
+#     should_center_origin: [true, false]
+#     square_size: [30, 50, 100]
+#     lr: [0.1, 0.01, 0.001, 0.0001]
