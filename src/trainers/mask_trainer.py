@@ -16,6 +16,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from skimage.transform import resize
 from skimage.io import imread
 import yaml
 
@@ -32,7 +33,9 @@ class MaskTrainer(BaseTrainer):
             project_path = self.config.firelab.project_path
             data_dir = os.path.join(project_path, self.config.data_dir)
             icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
-            self.mask = np.array(icon > 0).astype(np.float)
+            icon = resize(icon, self.config.hp.icon_size, mode='constant', anti_aliasing=True)
+            icon = convert_img_to_binary(icon)
+            self.mask = make_mask_ternary(icon)
         elif self.config.mask_type == 'custom':
             self.mask = np.array(self.config.mask)
         elif self.config.mask_type == 'square':
@@ -297,3 +300,7 @@ def randomly_fill_square(mask:np.array, p:float=1) -> np.array:
     result[2:-2, 2:-2] = interior
 
     return result
+
+
+def convert_img_to_binary(img):
+    return (img[:, :, 3] > 0).astype(np.float)

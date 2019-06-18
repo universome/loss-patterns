@@ -3,7 +3,7 @@ trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
 model_name: "simple"
-mask_type: "square"
+mask_type: "icon"
 modules:
   models: ["model"]
   optims: ["optim"]
@@ -18,46 +18,77 @@ solution_vis:
   granularity:
     x: 30
     y: 30
-  padding: 20
+  padding: 5
 hp:
   norm_reg_coef: 1.
   ort_reg_coef: 1.
   batch_size: 256
   grad_clip_threshold: 10
-  lr: 0.001
-  neg_loss_clip_threshold: 1
   negative_loss_coef: 1.0
-  norm_reg_coef: 1.0
-  num_bad_cells_per_update: 50
-  num_good_cells_per_update: 50
-  ort_reg_coef: 1.0
   parametrization_type: "simple"
-  scaling: 0.15
-  should_center_origin: true
   square_size: 30
+  num_good_cells_per_update: 25
+  num_bad_cells_per_update: 25
+  icon_size: [32, 32]
 hpo:
-  num_parallel_experiments_per_gpu: 3
+  num_parallel_experiments_per_gpu: 2
   scheme: "random-search"
-  num_experiments: 100
+  num_experiments: 500
   grid:
-    a: [1, 2, 3, 4, 5]
-    b: [1, 2, 3, 4, 5]
-    c: [1, 2, 3, 4, 5]
-    d: [1, 2, 3, 4, 5]
-    e: [1, 2, 3, 4, 5]
-# hpo:
-#   num_parallel_experiments_per_gpu: 5
-#   scheme: "random-search"
-#   num_experiments: 1000
-#   grid:
-#     scaling: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1., 2.5]
-#     num_good_cells_per_update: [1, 5, 25, 50]
-#     num_bad_cells_per_update: [1, 5, 25, 50]
-#     negative_loss_coef: [0.1, 0.5, 1., 2., 5.]
-#     neg_loss_clip_threshold: [1, 5, 10, 100]
-#     grad_clip_threshold: [1, 5, 10, 100]
-#     batch_size: [256, 512]
-#     parametrization_type: ["simple", "difference", "up_orthogonal"]
-#     should_center_origin: [true, false]
-#     square_size: [30, 50, 100]
-#     lr: [0.1, 0.01, 0.001, 0.0001]
+    lr: [0.001, 0.0005, 0.0001, 0.00001]
+    scaling: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1.]
+    should_center_origin: [true, false]
+    neg_loss_clip_threshold: [1, 5, 10, 100]
+    grad_clip_threshold: [1, 5, 10, 100]
+    icon_file_path: [
+      "icons/001-cancer.png",
+      "icons/002-heart.png",
+      "icons/003-air.png",
+      "icons/004-om.png",
+      "icons/005-leo.png",
+      "icons/006-cross.png",
+      "icons/007-moon.png",
+      "icons/008-pentagram.png",
+      "icons/009-aquarius.png",
+      "icons/010-jupiter.png",
+      "icons/011-copper.png",
+      "icons/012-gemini.png",
+      "icons/013-venus.png",
+      "icons/014-crystal ball.png",
+      "icons/015-earth.png",
+      "icons/016-mars.png",
+      "icons/017-sulphur.png",
+      "icons/018-lotus.png",
+      "icons/019-mercury.png",
+      "icons/020-scorpio.png",
+      "icons/021-crystal.png",
+      "icons/022-oxygen.png",
+      "icons/023-gemini.png",
+      "icons/024-rune.png",
+      "icons/025-water.png",
+      "icons/026-aries.png",
+      "icons/027-pluto.png",
+      "icons/028-death.png",
+      "icons/029-hand.png",
+      "icons/030-rune.png",
+      "icons/031-saturn.png",
+      "icons/032-yin yang.png",
+      "icons/033-pendulum.png",
+      "icons/034-virgo.png",
+      "icons/035-earth.png",
+      "icons/036-life.png",
+      "icons/037-libra.png",
+      "icons/038-skull.png",
+      "icons/039-warning.png",
+      "icons/040-sun.png",
+      "icons/041-star of david.png",
+      "icons/042-ankh.png",
+      "icons/043-hand.png",
+      "icons/044-candle.png",
+      "icons/045-taurus.png",
+      "icons/046-capricorn.png",
+      "icons/047-ceres.png",
+      "icons/048-sagittarius.png",
+      "icons/049-triangle.png",
+      "icons/050-uranus.png"
+    ]
