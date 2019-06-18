@@ -38,6 +38,10 @@ class MaskTrainer(BaseTrainer):
         elif self.config.mask_type == 'square':
             self.mask = generate_square_mask(self.config.hp.square_size)
             self.mask = make_mask_ternary(self.mask)
+        elif self.config.mask_type == 'randomly_filled_square':
+            self.mask = generate_square_mask(self.config.hp.square_size)
+            self.mask = randomly_fill_square(self.mask, self.config.hp.fill_prob)
+            self.mask = make_mask_ternary(self.mask)
         else:
             raise NotImplementedError('Mask type %s is not supported' % self.config.mask_type)
 
@@ -279,5 +283,17 @@ def make_mask_ternary(mask):
     # Convert 0/1/2 mask to -1/0/1 mask, because it's more sensible
     result[result == 0] = -1
     result[result == 2] = 0
+
+    return result
+
+
+def randomly_fill_square(mask:np.array, p:float=1) -> np.array:
+    "Takes square mask and fills it"
+    assert mask.shape[0] == mask.shape[1]
+    assert mask.shape[0] >= 4
+
+    result = np.copy(mask)
+    interior = np.random.rand(*result[2:-2, 2:-2].shape) < p
+    result[2:-2, 2:-2] = interior
 
     return result
