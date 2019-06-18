@@ -3,7 +3,7 @@ trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
 model_name: "simple"
-mask_type: "icon"
+mask_type: "randomly_filled_square"
 modules:
   models: ["model"]
   optims: ["optim"]
@@ -31,7 +31,7 @@ hp:
   num_bad_cells_per_update: 25
   icon_size: [32, 32]
 hpo:
-  num_parallel_experiments_per_gpu: 2
+  num_parallel_experiments_per_gpu: 3
   scheme: "random-search"
   num_experiments: 500
   grid:
@@ -40,55 +40,4 @@ hpo:
     should_center_origin: [true, false]
     neg_loss_clip_threshold: [1, 5, 10, 100]
     grad_clip_threshold: [1, 5, 10, 100]
-    icon_file_path: [
-      "icons/001-cancer.png",
-      "icons/002-heart.png",
-      "icons/003-air.png",
-      "icons/004-om.png",
-      "icons/005-leo.png",
-      "icons/006-cross.png",
-      "icons/007-moon.png",
-      "icons/008-pentagram.png",
-      "icons/009-aquarius.png",
-      "icons/010-jupiter.png",
-      "icons/011-copper.png",
-      "icons/012-gemini.png",
-      "icons/013-venus.png",
-      "icons/014-crystal ball.png",
-      "icons/015-earth.png",
-      "icons/016-mars.png",
-      "icons/017-sulphur.png",
-      "icons/018-lotus.png",
-      "icons/019-mercury.png",
-      "icons/020-scorpio.png",
-      "icons/021-crystal.png",
-      "icons/022-oxygen.png",
-      "icons/023-gemini.png",
-      "icons/024-rune.png",
-      "icons/025-water.png",
-      "icons/026-aries.png",
-      "icons/027-pluto.png",
-      "icons/028-death.png",
-      "icons/029-hand.png",
-      "icons/030-rune.png",
-      "icons/031-saturn.png",
-      "icons/032-yin yang.png",
-      "icons/033-pendulum.png",
-      "icons/034-virgo.png",
-      "icons/035-earth.png",
-      "icons/036-life.png",
-      "icons/037-libra.png",
-      "icons/038-skull.png",
-      "icons/039-warning.png",
-      "icons/040-sun.png",
-      "icons/041-star of david.png",
-      "icons/042-ankh.png",
-      "icons/043-hand.png",
-      "icons/044-candle.png",
-      "icons/045-taurus.png",
-      "icons/046-capricorn.png",
-      "icons/047-ceres.png",
-      "icons/048-sagittarius.png",
-      "icons/049-triangle.png",
-      "icons/050-uranus.png"
-    ]
+    fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
