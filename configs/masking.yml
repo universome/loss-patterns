@@ -3,7 +3,7 @@ trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
 model_name: "simple"
-mask_type: "randomly_filled_square"
+mask_type: "icon"
 modules:
   models: ["model"]
   optims: ["optim"]
@@ -26,18 +26,23 @@ hp:
   grad_clip_threshold: 10
   negative_loss_coef: 1.0
   parametrization_type: "simple"
-  square_size: 30
   num_good_cells_per_update: 25
   num_bad_cells_per_update: 25
-  icon_size: [32, 32]
+  should_resize_icon: false
 hpo:
-  num_parallel_experiments_per_gpu: 3
+  num_parallel_experiments_per_gpu: 5
   scheme: "random-search"
   num_experiments: 500
   grid:
     lr: [0.001, 0.0005, 0.0001, 0.00001]
-    scaling: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1.]
+    scaling: [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1.]
     should_center_origin: [true, false]
     neg_loss_clip_threshold: [1, 5, 10, 100]
     grad_clip_threshold: [1, 5, 10, 100]
-    fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    icon_file_path: [
+      "custom-icons/mona-lisa.png",
+      "custom-icons/batman-logo-1.png",
+      "custom-icons/batman-logo-2.png",
+      "custom-icons/goose.png",
+      "custom-icons/putin.png",
+    ]

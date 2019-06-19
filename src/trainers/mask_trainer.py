@@ -33,7 +33,8 @@ class MaskTrainer(BaseTrainer):
             project_path = self.config.firelab.project_path
             data_dir = os.path.join(project_path, self.config.data_dir)
             icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
-            icon = resize(icon, self.config.hp.icon_size, mode='constant', anti_aliasing=True)
+            if self.config.hp.get('should_resize_icon', False):
+                icon = resize(icon, self.config.hp.icon_size, mode='constant', anti_aliasing=True)
             icon = convert_img_to_binary(icon)
             self.mask = make_mask_ternary(icon)
         elif self.config.mask_type == 'custom':
@@ -302,5 +303,8 @@ def randomly_fill_square(mask:np.array, p:float=1) -> np.array:
     return result
 
 
-def convert_img_to_binary(img):
-    return (img[:, :, 3] > 0).astype(np.float)
+def convert_img_to_binary(img, threshold:float=0):
+    if img.ndim == 2:
+        return (img > threshold).astype(np.float)
+    else:
+        return (img[:, :, 3] > threshold).astype(np.float)
