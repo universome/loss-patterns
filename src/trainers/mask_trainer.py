@@ -270,25 +270,43 @@ def make_mask_ternary(mask):
     Takes 0/1 mask and makes -1/0/1 mask, setting 0 to -1,
     and those -1, which are far away from 1 to 0 (so we do not look at them)
     """
-    useless_zeros:List[Tuple[int, int]] = []
+    useless_cells:List[Tuple[int, int]] = []
 
     for i in range(mask.shape[0]):
         for j in range(mask.shape[1]):
-            if mask[i][j] == 1: continue
-
             num_ones = mask[max(i-1, 0):i+2, max(j-1, 0):j+2].sum()
 
-            if num_ones == 0:
-                useless_zeros.append((i, j))
+            if mask[i][j] == 0 and num_ones == 0 or \
+               mask[i][j] == 1 and num_ones == 9 or \
+               mask[i][j] == 1 and is_corner(i, j, mask.shape) and num_ones == 4 or \
+               mask[i][j] == 1 and is_border(i, j, mask.shape) and num_ones == 6:
+                useless_cells.append((i, j))
 
     result = np.copy(mask)
-    result[[i for i,j in useless_zeros], [j for i,j in useless_zeros]] = 2
+    result[[i for i,j in useless_cells], [j for i,j in useless_cells]] = 2
 
     # Convert 0/1/2 mask to -1/0/1 mask, because it's more sensible
     result[result == 0] = -1
     result[result == 2] = 0
 
     return result
+
+
+def is_corner(i, j, shape):
+    if i == 0 and j == 0: return True
+    if i == 0 and j == shape[1]-1: return True
+    if i == shape[0]-1 and j == 0: return True
+    if i == shape[0]-1 and j == shape[1]-1: return True
+
+    return False
+
+
+def is_border(i, j, shape):
+    if is_corner(i, j, shape): return False
+    if i == 0 or j == 0: return True
+    if i == shape[0]-1 or j == shape[1]-1: return True
+
+    return False
 
 
 def randomly_fill_square(mask:np.array, p:float=1) -> np.array:
