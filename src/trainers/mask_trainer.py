@@ -20,7 +20,7 @@ from skimage.transform import resize
 from skimage.io import imread
 import yaml
 
-from src.models import MaskModel, SimpleModel, SimpleModelOperation
+from src.models import MaskModel, SimpleModel, ConvModel
 from src.models.vgg import VGG11, VGG11Operation
 from src.utils import validate, validate_weights, weight_to_param, param_sizes
 
@@ -50,9 +50,11 @@ class MaskTrainer(BaseTrainer):
             raise NotImplementedError('Mask type %s is not supported' % self.config.mask_type)
 
         if self.config.model_name == "vgg":
-            self.torch_model_cls = VGG11
+            self.torch_model_builder = VGG11
         elif self.config.model_name == "simple":
-            self.torch_model_cls = SimpleModel
+            self.torch_model_builder = SimpleModel
+        elif self.config.model_name == "conv":
+            self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config)
         else:
             raise NotImplementedError("Model %s is not supported" % self.config.model_name)
 
@@ -69,7 +71,7 @@ class MaskTrainer(BaseTrainer):
 
     def init_models(self):
         self.model = MaskModel(
-            self.mask, self.torch_model_cls,
+            self.mask, self.torch_model_builder,
             scaling=self.config.hp.scaling,
             should_center_origin=self.config.hp.should_center_origin,
             parametrization_type=self.config.hp.parametrization_type)
@@ -166,7 +168,7 @@ class MaskTrainer(BaseTrainer):
         xs = np.linspace(-pad, self.mask.shape[0] + pad, x_num_points)
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
-        dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
+        dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
         scores = [[validate_weights(self.model.compute_point(x, y, should_orthogonalize=True), self.val_dataloader, dummy_model) for y in ys] for x in xs]
         self.logger.info(f'Scoring took {time.time() - start}')
 
@@ -219,9 +221,9 @@ class MaskTrainer(BaseTrainer):
         self.plot_all_weights_histograms()
 
         if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
-            self.stop(f'Good val accuracy is too low: {good_val_acc}')
+            self.stop(f'Good val accuracy is too low (epoch #{self.num_epochs_done}): {good_val_acc}')
         elif bad_val_acc > self.config.get('bad_val_acc_stop_threshold', 1.):
-            self.stop(f'Bad val accuracy is too high: {bad_val_acc}')
+            self.stop(f'Bad val accuracy is too high (epoch #{self.num_epochs_done}): {bad_val_acc}')
         else:
             pass
 
@@ -233,7 +235,7 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_figure('Mask', fig, self.num_iters_done)
 
     def plot_params_histograms(self, w, subtag:str):
-        dummy_model = self.torch_model_cls()
+        dummy_model = self.torch_model_builder()
         params = weight_to_param(w, param_sizes(dummy_model.parameters()))
         tags = ['Weights_histogram_{}/{}'.format(i, subtag) for i in range(len(params))]
 
