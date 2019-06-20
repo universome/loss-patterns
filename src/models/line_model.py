@@ -1,7 +1,7 @@
 import torch.nn as nn
 import numpy as np
 
-from .module_op import ModuleOperation
+from .layer_ops import ModuleOperation
 from .simple_model import SimpleModel, SimpleModelOperation
 from src.utils import weight_vector, weight_to_param, param_sizes
 

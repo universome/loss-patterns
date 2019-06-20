@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Tuple
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -16,8 +16,8 @@ def params_diff(p_lhs, p_rhs):
     return [lhs - rhs for lhs, rhs in zip(p_lhs, p_rhs)]
 
 
-def model_from_weight(weight, model_builder):
-    model = model_builder().to(weight.device)
+def model_from_weight(weight, torch_model_cls):
+    model = torch_model_cls().to(weight.device)
     param = weight_to_param(weight, param_sizes(model.parameters()))
     state_dict = params_to_state_dict(param, model.state_dict().keys())
     model.load_state_dict(state_dict)
@@ -41,7 +41,7 @@ def param_sizes(param):
     return [p.size() for p in param]
 
 
-def weight_to_param(w, sizes):
+def weight_to_param(w, sizes) -> List[torch.Tensor]:
     params = []
 
     for s in sizes:

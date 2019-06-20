@@ -51,10 +51,8 @@ class MaskTrainer(BaseTrainer):
 
         if self.config.model_name == "vgg":
             self.torch_model_cls = VGG11
-            self.model_op_cls = VGG11Operation
         elif self.config.model_name == "simple":
             self.torch_model_cls = SimpleModel
-            self.model_op_cls = SimpleModelOperation
         else:
             raise NotImplementedError("Model %s is not supported" % self.config.model_name)
 
@@ -71,7 +69,7 @@ class MaskTrainer(BaseTrainer):
 
     def init_models(self):
         self.model = MaskModel(
-            self.mask, self.torch_model_cls, self.model_op_cls,
+            self.mask, self.torch_model_cls,
             scaling=self.config.hp.scaling,
             should_center_origin=self.config.hp.should_center_origin,
             parametrization_type=self.config.hp.parametrization_type)
@@ -122,8 +120,7 @@ class MaskTrainer(BaseTrainer):
         if self.config.hp.parametrization_type != "up_orthogonal":
             ort = self.model.compute_ort_reg()
             norm_diff = self.model.compute_norm_reg()
-            loss += self.config.hp.ort_l1_coef * ort + self.config.hp.ort_l2_coef * ort.pow(2)
-            loss += self.config.hp.norm_l1_coef * norm_diff + self.config.hp.norm_l2_coef * norm_diff.pow(2)
+            loss += self.config.hp.ort_l2_coef * ort.pow(2) + self.config.hp.norm_l2_coef * norm_diff.pow(2)
 
             self.writer.add_scalar('Reg/ort', ort.item(), self.num_iters_done)
             self.writer.add_scalar('Reg/norm_diff', norm_diff.item(), self.num_iters_done)

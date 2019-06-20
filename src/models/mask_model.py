@@ -6,12 +6,12 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from src.models.module_op import ModuleOperation
+from src.models.layer_ops import ModuleOperation, convert_sequential_model_to_op
 from src.utils import weight_vector, orthogonalize
 
 
 class MaskModel(ModuleOperation):
-    def __init__(self, mask:List[List[int]], torch_model_cls, model_op_cls,
+    def __init__(self, mask:List[List[int]], torch_model_cls,
                        scaling:float=1., should_center_origin:bool=False, parametrization_type:str="simple"):
         """
         @params
@@ -19,16 +19,15 @@ class MaskModel(ModuleOperation):
         """
 
         self.mask = mask
-        self.torch_model_cls = torch_model_cls
-        self.model_op_cls = model_op_cls
+        self.dummy_model = torch_model_cls()
         self.scaling = scaling
         self.is_good_mode = True
         self.should_center_origin = should_center_origin
         self.parametrization_type = parametrization_type
 
-        self.origin_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
-        self.right_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
-        self.up_param = nn.Parameter(weight_vector(self.torch_model_cls().parameters()))
+        self.origin_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
+        self.right_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
+        self.up_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
 
     @property
     def origin(self):
@@ -65,7 +64,9 @@ class MaskModel(ModuleOperation):
         return self.run_from_weights(w, x)
 
     def run_from_weights(self, w, x):
-        return self.model_op_cls(w)(x)
+        model_op = convert_sequential_model_to_op(w, self.dummy_model)
+
+        return model_op(x)
 
     def sample_idx(self) -> Tuple[int, int]:
         if np.random.rand() > 0.5:

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-from src.models.module_op import ModuleOperation
 from src.models.layer_ops import *
 from src.model_zoo.layers import Flatten
 from src.utils import weight_to_param, param_sizes
@@ -14,11 +13,11 @@ class SimpleModel(nn.Module):
         self.nn = nn.Sequential(
             nn.Conv2d(1, 8, 5),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, stride=2),
+            nn.MaxPool2d(2, 2),
 
             nn.Conv2d(8, 32, 3),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, stride=2),
+            nn.MaxPool2d(2, 2),
 
             Flatten(),
             nn.Linear(800, 1024),

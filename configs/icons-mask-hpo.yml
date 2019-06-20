@@ -10,20 +10,23 @@ modules:
 logging:
   training_progress: False
 max_num_epochs: 100
-# max_num_iters: 1
-good_val_acc_stop_threshold: 0.2
-bad_val_acc_stop_threshold: 0.9
-val_freq_epochs: 1
 solution_vis:
   granularity:
     x: 30
     y: 30
   padding: 5
+good_val_acc_stop_threshold: 0.2
+bad_val_acc_stop_threshold: 0.9
+val_freq_epochs: 1
+# max_num_iters: 1
+# solution_vis:
+#   granularity:
+#     x: 3
+#     y: 3
+#   padding: 1
 hp:
-  norm_l1_coef: 1.
-  norm_l2_coef: 1.
-  ort_l1_coef: 1.
-  ort_l2_coef: 1.
+  norm_l2_coef: 10.
+  ort_l2_coef: 10.
   batch_size: 256
   grad_clip_threshold: 10
   negative_loss_coef: 1.0

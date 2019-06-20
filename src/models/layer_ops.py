@@ -1,9 +1,35 @@
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models.module_op import ModuleOperation
 from src.model_zoo.layers import Flatten
+from src.utils import weight_to_param, param_sizes
+
+
+class ModuleOperation:
+    def __init__(self):
+        self.trainig = True
+
+    def train(self, is_enabled:bool=True):
+        self.training = is_enabled
+
+        for m in self.get_modules():
+            m.train(is_enabled)
+
+        return self
+
+    def eval(self):
+        return self.train(False)
+
+    def get_modules(self):
+        return []
+
+    # def to(self, *args, **kwargs):
+    #     for name, p in self.named_params:
+    #         setattr(self, name, p.to(*args, **kwargs))
+
 
 
 class SequentialOp(ModuleOperation):
@@ -90,11 +116,11 @@ class BatchNormOp(ModuleOperation):
             weight=self.weight, bias=self.bias, training=True)
 
 
-def convert_sequential_model_to_op(seq_model:nn.Sequential) -> ModuleOperation:
+def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
     ops = []
-    params = list(seq_model.parameters())
+    params = weight_to_param(weight, param_sizes(dummy_model.parameters()))
 
-    for module in seq_model.children():
+    for module in dummy_model.children():
         if isinstance(module, nn.Linear):
             ops.append(LinearOp(*params[:2]))
             params = params[2:]
@@ -110,7 +136,14 @@ def convert_sequential_model_to_op(seq_model:nn.Sequential) -> ModuleOperation:
             ops.append(nn.MaxPool2d(module.kernel_size, module.stride))
         elif isinstance(module, Flatten):
             ops.append(Flatten())
-        # elif isinstance(module, nn.Sequential):
-        #     params
+        elif isinstance(module, nn.Sequential):
+            num_params_in_module:int = len(list(module.parameters()))
+            curr_weight = torch.cat([p.view(-1) for p in params[:num_params_in_module]])
+            ops.append(convert_sequential_model_to_op(curr_weight, module))
+            params = params[num_params_in_module:]
         else:
             raise NotImplementedError("Module of type %s is not supported." % type(module))
+
+    assert len(params) == 0, "Not all params was used. Conversion turned out to be wrong."
+
+    return SequentialOp(*ops)
