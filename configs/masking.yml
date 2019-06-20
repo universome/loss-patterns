@@ -20,8 +20,10 @@ solution_vis:
     y: 30
   padding: 5
 hp:
-  norm_reg_coef: 1.
-  ort_reg_coef: 1.
+  norm_l1_coef: 1.
+  norm_l2_coef: 1.
+  ort_l1_coef: 1.
+  ort_l2_coef: 1.
   batch_size: 256
   grad_clip_threshold: 10
   negative_loss_coef: 1.0

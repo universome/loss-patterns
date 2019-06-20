@@ -22,7 +22,7 @@ import yaml
 
 from src.models import MaskModel, SimpleModel, SimpleModelOperation
 from src.models.vgg import VGG11, VGG11Operation
-from src.utils import validate, validate_weights, orthogonalize, weight_to_param, param_sizes
+from src.utils import validate, validate_weights, weight_to_param, param_sizes
 
 
 class MaskTrainer(BaseTrainer):
@@ -34,7 +34,7 @@ class MaskTrainer(BaseTrainer):
             data_dir = os.path.join(project_path, self.config.data_dir)
             icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
             if self.config.hp.get('should_resize_icon', False):
-                icon = resize(icon, self.config.hp.icon_size, mode='constant', anti_aliasing=True)
+                icon = resize(icon, self.config.hp.target_icon_size, mode='constant', anti_aliasing=True)
             icon = convert_img_to_binary(icon)
             self.mask = make_mask_ternary(icon)
         elif self.config.mask_type == 'custom':
@@ -120,12 +120,13 @@ class MaskTrainer(BaseTrainer):
 
         # Adding regularization
         if self.config.hp.parametrization_type != "up_orthogonal":
-            ort_reg = self.model.compute_ort_reg()
-            norm_reg = self.model.compute_norm_reg()
-            loss += self.config.hp.ort_reg_coef * ort_reg + self.config.hp.norm_reg_coef * norm_reg
+            ort = self.model.compute_ort_reg()
+            norm_diff = self.model.compute_norm_reg()
+            loss += self.config.hp.ort_l1_coef * ort + self.config.hp.ort_l2_coef * ort.pow(2)
+            loss += self.config.hp.norm_l1_coef * norm_diff + self.config.hp.norm_l2_coef * norm_diff.pow(2)
 
-            self.writer.add_scalar('Reg/ort', ort_reg.item(), self.num_iters_done)
-            self.writer.add_scalar('Reg/norm', norm_reg.item(), self.num_iters_done)
+            self.writer.add_scalar('Reg/ort', ort.item(), self.num_iters_done)
+            self.writer.add_scalar('Reg/norm_diff', norm_diff.item(), self.num_iters_done)
 
         self.optim.zero_grad()
         loss.backward()
@@ -169,7 +170,7 @@ class MaskTrainer(BaseTrainer):
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
         dummy_model = self.torch_model_cls().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.compute_point(x, y), self.val_dataloader, dummy_model) for y in ys] for x in xs]
+        scores = [[validate_weights(self.model.compute_point(x, y, should_orthogonalize=True), self.val_dataloader, dummy_model) for y in ys] for x in xs]
         self.logger.info(f'Scoring took {time.time() - start}')
 
         return xs, ys, scores

@@ -85,12 +85,18 @@ class MaskModel(ModuleOperation):
     def sample_class_weight(self, cls_idx:int):
         return self.compute_point(*self.sample_class_idx(cls_idx))
 
-    def compute_point(self, x, y):
+    def compute_point(self, x, y, should_orthogonalize:bool=False):
+        up = self.up
+        right = self.right
+
+        if should_orthogonalize:
+            up = orthogonalize(right, up, adjust_len_to_v1=True)
+
         if self.should_center_origin:
             x -= (self.mask.shape[0] // 2)
             y -= (self.mask.shape[1] // 2)
 
-        return self.origin + self.scaling * (x * self.up + y * self.right)
+        return self.origin + self.scaling * (x * up + y * right)
 
     def compute_ort_reg(self):
         return torch.dot(self.up, self.right).abs()

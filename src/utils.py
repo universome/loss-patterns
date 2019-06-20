@@ -68,14 +68,14 @@ def orthogonalize(v1, v2, adjust_len_to_v1=False, adjust_len_to_v2=False):
     v2 = v2.double()
 
     #w = v1 * torch.norm(v2).pow(2) - v2 * torch.dot(v1, v2)
-    v3 = v2 - v1 * (torch.dot(v2, v1) / torch.norm(v1).pow(2))
+    result = v2 - v1 * (torch.dot(v2, v1) / torch.norm(v1).pow(2))
 
     if adjust_len_to_v1:
-        v3 = v3 * (torch.norm(v1) / torch.norm(v3))
+        result = result * (torch.norm(v1) / torch.norm(result))
     elif adjust_len_to_v2:
-        v3 = v3 * (torch.norm(v2) / torch.norm(v3))
+        result = result * (torch.norm(v2) / torch.norm(result))
 
-    return v3.float()
+    return result.float()
 
 
 def sample_on_circle(center, z, r, angle_range=(0, 2 * np.pi)):
