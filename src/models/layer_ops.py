@@ -132,6 +132,8 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             params = params[2:]
         elif isinstance(module, nn.ReLU):
             ops.append(nn.ReLU(inplace=True))
+        elif isinstance(module, nn.Dropout):
+            ops.append(nn.Dropout(module.p))
         elif isinstance(module, nn.MaxPool2d):
             ops.append(nn.MaxPool2d(module.kernel_size, module.stride))
         elif isinstance(module, Flatten):

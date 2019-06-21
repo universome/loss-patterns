@@ -12,31 +12,35 @@ class ConvModel(nn.Module):
         conv_sizes = config.get('conv_sizes', [1, 8, 32, 64])
         dense_sizes = config.get('dense_sizes', [576, 128])
         use_bn = config.get('use_bn', False)
+        use_dropout = config.get('use_dropout', False)
 
         self.nn = nn.Sequential(
-            *self._create_blocks(self._create_conv_block, conv_sizes, use_bn),
+            *self._create_blocks(self._create_conv_block, conv_sizes, use_bn, use_dropout),
             Flatten(),
-            *self._create_blocks(self._create_dense_block, dense_sizes, use_bn),
+            *self._create_blocks(self._create_dense_block, dense_sizes, use_bn, use_dropout),
             nn.Linear(dense_sizes[-1], 10)
         )
 
-    def _create_blocks(self, block_builder, sizes, use_bn=False) -> List[nn.Sequential]:
-        return [block_builder(sizes[i], sizes[i+1], use_bn) for i in range(len(sizes) - 1)]
+    def _create_blocks(self, block_builder, sizes, use_bn:bool, use_dropout:bool) -> List[nn.Sequential]:
+        return [block_builder(sizes[i], sizes[i+1], use_bn, use_dropout) for i in range(len(sizes) - 1)]
 
-    def _create_conv_block(self, in_size:int, out_size:int, use_bn:bool):
+    def _create_conv_block(self, in_size:int, out_size:int, use_bn:bool, use_dropout:bool):
         block = nn.Sequential()
         block.add_module('conv2d', nn.Conv2d(in_size, out_size, 3, padding=1))
         if use_bn:
-            block.add_module('bn2d', nn.BatchNorm2d(out_size))
+            block.add_module('bn2d', nn.BatchNorm2d(out_size)) # TODO: track_running_stats=False?
         block.add_module('relu', nn.ReLU(inplace=True))
         block.add_module('maxpool', nn.MaxPool2d(2, 2))
 
         return block
 
-    def _create_dense_block(self, in_size:int, out_size:int, use_bn:bool):
+    def _create_dense_block(self, in_size:int, out_size:int, use_bn:bool, use_dropout:bool):
         block = nn.Sequential()
         block.add_module('linear', nn.Linear(in_size, out_size))
         block.add_module('relu', nn.ReLU(inplace=True))
+
+        if use_dropout:
+            block.add_module('dropout', nn.Dropout())
 
         return block
 

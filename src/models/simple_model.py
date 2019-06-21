@@ -22,7 +22,14 @@ class SimpleModel(nn.Module):
             Flatten(),
             nn.Linear(800, 1024),
             nn.ReLU(inplace=True),
-            nn.Linear(1024, 10)
+            nn.Dropout(),
+            nn.Linear(1024, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(256, 10)
         )
 
     def forward(self, x):
