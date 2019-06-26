@@ -1,5 +1,5 @@
 import os
-import math
+import shutil
 import time
 import random
 from itertools import chain
@@ -13,7 +13,7 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 from torchvision.datasets import MNIST, FashionMNIST
 from torchvision.transforms import ToTensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.transform import resize
@@ -49,6 +49,28 @@ class MaskTrainer(BaseTrainer):
         else:
             raise NotImplementedError('Mask type %s is not supported' % self.config.mask_type)
 
+    def init_dataloaders(self):
+        dataset = self.config.hp.get('dataset', 'FashionMNIST')
+        if dataset == 'FashionMNIST':
+            dataset_class = FashionMNIST
+        elif dataset == 'MNIST':
+            dataset_class = MNIST
+        else:
+            raise NotImplementedError(f"Unknown dataset: {dataset}")
+
+        batch_size = self.config.hp.batch_size
+        project_path = self.config.firelab.project_path
+        data_dir = os.path.join(project_path, self.config.data_dir)
+
+        data_train = dataset_class(data_dir, train=True, transform=ToTensor())
+        data_test = dataset_class(data_dir, train=False, transform=ToTensor())
+        data_vis = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
+
+        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=0, shuffle=True)
+        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=0, shuffle=False)
+        self.vis_dataloader = DataLoader(data_vis, batch_size=batch_size, num_workers=0, shuffle=False)
+
+    def init_models(self):
         if self.config.model_name == "vgg":
             self.torch_model_builder = VGG11
         elif self.config.model_name == "simple":
@@ -58,18 +80,6 @@ class MaskTrainer(BaseTrainer):
         else:
             raise NotImplementedError("Model %s is not supported" % self.config.model_name)
 
-    def init_dataloaders(self):
-        batch_size = self.config.hp.batch_size
-        project_path = self.config.firelab.project_path
-        data_dir = os.path.join(project_path, self.config.data_dir)
-
-        data_train = FashionMNIST(data_dir, download=True, train=True, transform=ToTensor())
-        data_test = FashionMNIST(data_dir, download=True, train=False, transform=ToTensor())
-
-        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=0, shuffle=True)
-        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=0, shuffle=False)
-
-    def init_models(self):
         self.model = MaskModel(
             self.mask, self.torch_model_builder,
             scaling=self.config.hp.scaling,
@@ -155,9 +165,15 @@ class MaskTrainer(BaseTrainer):
         self.write_config()
 
     def after_training_hook(self):
-        if self.is_explicitly_stopped: return
+        if self.is_explicitly_stopped:
+            self.delete_logs() # So tensorboard does not lag
+        else:
+            self.visualize_minimum()
 
-        self.visualize_minimum()
+
+    def delete_logs(self):
+        shutil.rmtree(self.config.firelab.logs_path)
+        self.writer.close()
 
     def compute_mask_scores(self):
         start = time.time()
@@ -169,10 +185,14 @@ class MaskTrainer(BaseTrainer):
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
         dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
-        scores = [[validate_weights(self.model.compute_point(x, y, should_orthogonalize=True), self.val_dataloader, dummy_model) for y in ys] for x in xs]
+        scores = [[self.compute_mask_score(x, y, dummy_model) for y in ys] for x in xs]
         self.logger.info(f'Scoring took {time.time() - start}')
 
         return xs, ys, scores
+
+    def compute_mask_score(self, x, y, dummy_model):
+        w = self.model.compute_point(x, y, should_orthogonalize=True)
+        return validate_weights(w, self.vis_dataloader, dummy_model)
 
     def visualize_minimum(self):
         xs, ys, scores = self.compute_mask_scores()
