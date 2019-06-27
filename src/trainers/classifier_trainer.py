@@ -12,7 +12,7 @@ from torchvision.transforms import ToTensor, ToPILImage, Compose
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.models import SimpleModel, VGG11
+from src.models import SimpleModel, VGG11, ConvModel
 from src.utils import validate, validate_weights, weight_vector
 
 
@@ -32,8 +32,13 @@ class ClassifierTrainer(BaseTrainer):
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=3, shuffle=False)
 
     def init_models(self):
-        # self.model = SimpleModel().to(self.config.firelab.device_name)
-        self.model = VGG11(n_input_channels=1, num_classes=10, head_size=512)
+        if self.config.model_name == 'vgg':
+            self.model = VGG11(n_input_channels=1, num_classes=10, head_size=512)
+        elif self.config.model_name == 'conv':
+            self.model = ConvModel(self.config.hp.conv_model_config)
+        else:
+            raise NotImplementedError(f'Model {self.config.model_name} is not supported')
+
         self.model = self.model.to(self.config.firelab.device_name)
 
     def init_criterions(self):

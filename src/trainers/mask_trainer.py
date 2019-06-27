@@ -66,9 +66,9 @@ class MaskTrainer(BaseTrainer):
         data_test = dataset_class(data_dir, train=False, transform=ToTensor())
         data_vis = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
 
-        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=0, shuffle=True)
-        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=0, shuffle=False)
-        self.vis_dataloader = DataLoader(data_vis, batch_size=batch_size, num_workers=0, shuffle=False)
+        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=2, shuffle=True)
+        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=2, shuffle=False)
+        self.vis_dataloader = DataLoader(data_vis, batch_size=batch_size, num_workers=2, shuffle=False)
 
     def init_models(self):
         if self.config.model_name == "vgg":

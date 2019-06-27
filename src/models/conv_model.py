@@ -3,6 +3,7 @@ import torch.nn as nn
 from firelab.config import Config
 
 from src.model_zoo.layers import Flatten
+from src.models.layer_ops import ReparametrizedBatchNorm2d
 
 
 class ConvModel(nn.Module):
@@ -40,7 +41,7 @@ class ConvModel(nn.Module):
         block = nn.Sequential()
         block.add_module('conv2d', nn.Conv2d(in_size, out_size, 3, padding=1))
         if use_bn:
-            block.add_module('bn2d', nn.BatchNorm2d(out_size)) # TODO: track_running_stats=False?
+            block.add_module('bn2d', ReparametrizedBatchNorm2d(out_size)) # TODO: track_running_stats=False?
         block.add_module('activation', self.activation())
         block.add_module('maxpool', nn.MaxPool2d(2, 2))
 

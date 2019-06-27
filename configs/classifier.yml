@@ -5,8 +5,15 @@ data_dir: "data"
 modules:
   models: ["model"]
   optims: ["optim"]
+model_name: "conv"
 max_num_epochs: 10
 val_freq_epochs: 1
 hp:
   batch_size: 256
   lr: 0.001
+  conv_model_config:
+    conv_sizes: [1, 8, 32, 64]
+    dense_sizes: [576, 512, 128]
+    activation: 'relu'
+    use_bn: true
+    use_dropout: true

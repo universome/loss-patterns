@@ -25,7 +25,7 @@ solution_vis:
 #     y: 3
 #   padding: 1
 hpo:
-  num_parallel_experiments_per_gpu: 2
+  num_parallel_experiments_per_gpu: 3
   scheme: "random-search"
   num_experiments: 500
   grid:
@@ -34,75 +34,29 @@ hpo:
     batch_size: [256]
     negative_loss_coef: [0.5, 1., 5.]
     parametrization_type: ["simple", "difference", "up_orthogonal"]
-    num_good_cells_per_update: [25, 50, 100]
-    num_bad_cells_per_update: [25, 50, 100]
+    num_good_cells_per_update: [25, 50]
+    num_bad_cells_per_update: [25, 50]
     should_resize_icon: [false]
     should_center_origin: [true]
     lr: [0.01, 0.005, 0.001, 0.0005, 0.00025, 0.0001, 0.00005]
     scaling: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25]
     neg_loss_clip_threshold: [0.5, 1., 2., 3., 4., 5.]
     grad_clip_threshold: [1, 5, 10, 25, 100]
-    icon_file_path: ["custom-icons/mona-lisa-large.png"]
+    icon_file_path: ["icons/008-pentagram.png"]
     conv_model_config: [
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 512, 128], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 1024, 128], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'relu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'selu'},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 512, 128], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 1024, 128], activation: 'relu', use_bn: true},
       {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'tanh'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'relu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'selu'},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'tanh'},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], activation: 'relu', use_bn: true},
     ]
     dataset: ["MNIST", "FashionMNIST"]

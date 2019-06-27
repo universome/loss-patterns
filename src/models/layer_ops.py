@@ -116,6 +116,57 @@ class BatchNormOp(ModuleOperation):
             weight=self.weight, bias=self.bias, training=True)
 
 
+class ReparametrizedBatchNorm2d(nn.BatchNorm2d):
+    def __init__(self, *args, **kwargs):
+        super(ReparametrizedBatchNorm2d, self).__init__(*args, **kwargs)
+
+    def reset_parameters(self):
+        super(ReparametrizedBatchNorm2d, self).reset_parameters()
+        self.weight.data.add_(-0.5) # So it has zero mean
+
+    def forward(self, x):
+        self._check_input_dim(x)
+
+        # exponential_average_factor is self.momentum set to
+        # (when it is available) only so that if gets updated
+        # in ONNX graph when this node is exported to ONNX.
+        if self.momentum is None:
+            exponential_average_factor = 0.0
+        else:
+            exponential_average_factor = self.momentum
+
+        if self.training and self.track_running_stats:
+            # TODO: if statement only here to tell the jit to skip emitting this when it is None
+            if self.num_batches_tracked is not None:
+                self.num_batches_tracked += 1
+                if self.momentum is None:  # use cumulative moving average
+                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
+                else:  # use exponential moving average
+                    exponential_average_factor = self.momentum
+
+        return F.batch_norm(
+            x, self.running_mean, self.running_var, self.weight + 0.5, self.bias,
+            self.training or not self.track_running_stats,
+            exponential_average_factor, self.eps)
+
+
+class ReparametrizedBatchNorm2dOp(ModuleOperation):
+    def __init__(self, weight, bias):
+        super(ReparametrizedBatchNorm2dOp, self).__init__()
+
+        self.weight = weight
+        self.bias = bias
+
+    def __call__(self, x):
+        # We do not keep running mean/var because anyway
+        # during interpolation we won't be able to use it
+        dummy_mean = torch.zeros_like(self.bias)
+        dummy_var = torch.ones_like(self.weight)
+
+        return F.batch_norm(x, dummy_mean, dummy_var,
+            weight=self.weight + 0.5, bias=self.bias, training=True)
+
+
 def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
     ops = []
     params = weight_to_param(weight, param_sizes(dummy_model.parameters()))
@@ -129,6 +180,9 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             params = params[2:]
         elif isinstance(module, nn.BatchNorm2d):
             ops.append(BatchNormOp(*params[:2]))
+            params = params[2:]
+        elif isinstance(module, ReparametrizedBatchNorm2d):
+            ops.append(ReparametrizedBatchNorm2dOp(*params[:2]))
             params = params[2:]
         elif isinstance(module, nn.ReLU):
             ops.append(nn.ReLU(inplace=True))
