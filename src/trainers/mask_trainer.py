@@ -87,6 +87,9 @@ class MaskTrainer(BaseTrainer):
             parametrization_type=self.config.hp.parametrization_type)
         self.model = self.model.to(self.config.firelab.device_name)
 
+        # self.logger.info(f'Model initial orthogonality: {self.model.compute_ort_reg()}')
+        # self.logger.info(f'Model params: {self.config.hp.conv_model_config.to_dict()}. Parametrization: {self.config.hp.parametrization_type}')
+
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
 

@@ -29,8 +29,9 @@ class MaskModel(ModuleOperation):
         self.right_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
         self.up_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
 
-        assert torch.dot(self.right_param, self.up_param) < 30, \
-            f"Dot product is too high ({torch.dot(self.right_param, self.up_param)}). Looks suspicious."
+        assert torch.dot(self.right, self.up) < 30 or self.parametrization_type == 'difference', \
+            f"Dot product is too high ({torch.dot(self.right, self.up)}). Looks suspicious." + \
+            f"Parametrization: {self.parametrization_type}"
 
     @property
     def origin(self):
