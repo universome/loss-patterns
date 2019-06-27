@@ -25,7 +25,7 @@ solution_vis:
 #     y: 3
 #   padding: 1
 hpo:
-  num_parallel_experiments_per_gpu: 3
+  num_parallel_experiments_per_gpu: 7
   scheme: "random-search"
   num_experiments: 500
   grid:
@@ -34,8 +34,8 @@ hpo:
     batch_size: [256]
     negative_loss_coef: [0.5, 1., 5.]
     parametrization_type: ["simple", "difference", "up_orthogonal"]
-    num_good_cells_per_update: [25, 50]
-    num_bad_cells_per_update: [25, 50]
+    num_good_cells_per_update: [25, 50, 100]
+    num_bad_cells_per_update: [25, 50, 100]
     should_resize_icon: [false]
     should_center_origin: [true]
     lr: [0.01, 0.005, 0.001, 0.0005, 0.00025, 0.0001, 0.00005]

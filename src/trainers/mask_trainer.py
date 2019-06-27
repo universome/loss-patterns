@@ -97,6 +97,8 @@ class MaskTrainer(BaseTrainer):
         self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
 
     def train_on_batch(self, batch):
+        self.optim.zero_grad()
+
         x = batch[0].to(self.config.firelab.device_name)
         y = batch[1].to(self.config.firelab.device_name)
 
@@ -113,51 +115,52 @@ class MaskTrainer(BaseTrainer):
 
         for i, j in random.sample(good_idx, num_good_points_to_use):
             preds = self.model.run_from_weights(self.model.compute_point(i,j), x)
-            good_losses.append(self.criterion(preds, y).mean())
-            good_accs.append((preds.argmax(dim=1) == y).float().mean())
+
+            good_loss = self.criterion(preds, y).mean()
+            good_losses.append(good_loss.item())
+            good_loss /= num_good_points_to_use
+            good_loss.backward() # To make the graph free
+
+            good_accs.append((preds.argmax(dim=1) == y).float().mean().item())
 
         for i, j in random.sample(bad_idx, num_bad_points_to_use):
             preds = self.model.run_from_weights(self.model.compute_point(i,j), x)
-            bad_losses.append(self.criterion(preds, y).mean())
-            bad_accs.append((preds.argmax(dim=1) == y).float().mean())
 
-        good_losses = torch.stack(good_losses)
-        good_accs = torch.stack(good_accs)
-        bad_losses = torch.stack(bad_losses)
-        bad_accs = torch.stack(bad_accs)
+            bad_loss = self.criterion(preds, y).mean()
+            bad_losses.append(bad_loss.item())
+            bad_loss = bad_loss.clamp(0, self.config.hp.neg_loss_clip_threshold)
+            bad_loss /= num_bad_points_to_use
+            bad_loss *= self.config.hp.negative_loss_coef
+            bad_loss *= -1 # To make it grow
+            bad_loss.backward() # To make the graph free
 
-        # Main losses
-        good_loss = good_losses.mean()
-        bad_loss = bad_losses.clamp(0, self.config.hp.neg_loss_clip_threshold).mean()
-        loss = good_loss - self.config.hp.negative_loss_coef * bad_loss
+            bad_accs.append((preds.argmax(dim=1) == y).float().mean().item())
+
+        good_losses = np.array(good_losses)
+        good_accs = np.array(good_accs)
+        bad_losses = np.array(bad_losses)
+        bad_accs = np.array(bad_accs)
 
         # Adding regularization
         if self.config.hp.parametrization_type != "up_orthogonal":
             ort = self.model.compute_ort_reg()
             norm_diff = self.model.compute_norm_reg()
-            loss += self.config.hp.ort_l2_coef * ort.pow(2) + self.config.hp.norm_l2_coef * norm_diff.pow(2)
+            reg_loss = self.config.hp.ort_l2_coef * ort.pow(2) + self.config.hp.norm_l2_coef * norm_diff.pow(2)
+            reg_loss.backward()
 
             self.writer.add_scalar('Reg/ort', ort.item(), self.num_iters_done)
             self.writer.add_scalar('Reg/norm_diff', norm_diff.item(), self.num_iters_done)
 
-        self.optim.zero_grad()
-        loss.backward()
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
 
-        self.writer.add_scalar('bad/train/loss', bad_losses.mean().mean().item(), self.num_iters_done)
-        self.writer.add_scalar('bad/train/acc', bad_accs.mean().item(), self.num_iters_done)
         self.writer.add_scalar('good/train/loss', good_losses.mean().item(), self.num_iters_done)
         self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('bad/train/loss', bad_losses.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('bad/train/acc', bad_accs.mean().item(), self.num_iters_done)
 
-        # Tracking stats
-        # self.writer.add_scalars('lengths', {
-        #     'right': self.model.right.norm(),
-        #     'up': self.model.up.norm(),
-        # }, self.num_iters_done)
         self.writer.add_scalar('Stats/lengths/right', self.model.right.norm(), self.num_iters_done)
         self.writer.add_scalar('Stats/lengths/up', self.model.up.norm(), self.num_iters_done)
-
         self.writer.add_scalar('Stats/grad_norms/origin', self.model.origin.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
