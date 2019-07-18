@@ -36,7 +36,7 @@ hp:
   should_resize_icon: true
   target_icon_size: [32, 32]
 hpo:
-  num_parallel_experiments_per_gpu: 7
+  num_parallel_experiments_per_gpu: 10
   scheme: "random-search"
   num_experiments: 500
   grid:

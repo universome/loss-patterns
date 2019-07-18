@@ -21,7 +21,7 @@ from skimage.io import imread
 import yaml
 
 from src.models import MaskModel, SimpleModel, ConvModel
-from src.models.vgg import VGG11, VGG11Operation
+from src.models.vgg import VGG11
 from src.utils import validate, validate_weights, weight_to_param, param_sizes
 
 

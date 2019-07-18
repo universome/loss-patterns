@@ -139,6 +139,7 @@ class ReparametrizedBatchNorm2d(nn.BatchNorm2d):
             # TODO: if statement only here to tell the jit to skip emitting this when it is None
             if self.num_batches_tracked is not None:
                 self.num_batches_tracked += 1
+
                 if self.momentum is None:  # use cumulative moving average
                     exponential_average_factor = 1.0 / float(self.num_batches_tracked)
                 else:  # use exponential moving average
@@ -198,6 +199,8 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             ops.append(nn.MaxPool2d(module.kernel_size, module.stride))
         elif isinstance(module, Flatten):
             ops.append(Flatten())
+        elif isinstance(module, nn.AdaptiveAvgPool2d):
+            ops.append(nn.AdaptiveAvgPool2d(module.output_size))
         elif isinstance(module, nn.Sequential):
             num_params_in_module:int = len(list(module.parameters()))
             curr_weight = torch.cat([p.view(-1) for p in params[:num_params_in_module]])
