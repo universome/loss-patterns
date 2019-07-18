@@ -352,7 +352,7 @@ def randomly_fill_square(mask:np.array, p:float=1) -> np.array:
     return result
 
 
-def convert_img_to_binary(img, threshold:float=0):
+def convert_img_to_binary(img, threshold:float=0.5):
     if img.ndim == 2:
         return (img > threshold).astype(np.float)
     else:
