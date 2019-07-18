@@ -204,6 +204,7 @@ class MaskTrainer(BaseTrainer):
         xs, ys, scores = self.compute_mask_scores()
         fig = self.build_minimum_figure(xs, ys, scores)
         self.writer.add_figure('Minimum', fig, self.num_iters_done)
+        self.save_minima_grid(scores)
 
     def build_minimum_figure(self, xs, ys, scores):
         X, Y = np.meshgrid(xs, ys)
@@ -277,6 +278,10 @@ class MaskTrainer(BaseTrainer):
         config_yml = yaml.safe_dump(self.config.to_dict())
         config_yml = config_yml.replace('\n', '  \n') # Because tensorboard uses markdown
         self.writer.add_text('Config', config_yml, self.num_iters_done)
+
+    def save_minima_grid(self, minima_grid):
+        save_path = os.path.join(self.config.firelab.custom_data_path, 'minima_grid.npy')
+        np.save(save_path, minima_grid)
 
 
 def generate_square_mask(square_size):
