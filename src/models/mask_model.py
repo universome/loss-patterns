@@ -12,7 +12,7 @@ from src.utils import weight_vector, orthogonalize
 
 class MaskModel(ModuleOperation):
     def __init__(self, mask:List[List[int]], torch_model_cls,
-                       scaling:float=1., should_center_origin:bool=False, parametrization_type:str="simple"):
+                       should_center_origin:bool=False, parametrization_type:str="simple"):
         """
         @params
             - should_center_origin: specifies, if our origin should be in the center of the mask
@@ -20,7 +20,6 @@ class MaskModel(ModuleOperation):
 
         self.mask = mask
         self.dummy_model = torch_model_cls()
-        self.scaling = scaling
         self.is_good_mode = True
         self.should_center_origin = should_center_origin
         self.parametrization_type = parametrization_type
@@ -28,6 +27,7 @@ class MaskModel(ModuleOperation):
         self.origin_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
         self.right_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
         self.up_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
+        self.scaling_param = nn.Parameter(torch.tensor(0.1))
 
         assert torch.dot(self.right, self.up) < 30 or self.parametrization_type == 'difference', \
             f"Dot product is too high ({torch.dot(self.right, self.up)}). Looks suspicious." + \
@@ -58,6 +58,10 @@ class MaskModel(ModuleOperation):
             return orthogonalize(self.right, self.up_param, adjust_len_to_v1=True)
         else:
             raise NotImplementedError(f'Unknown parametrization type {self.parametrization_type}')
+
+    @property
+    def scaling(self):
+        return self.scaling_param
 
     def __call__(self, x):
         if self.is_good_mode:
@@ -113,11 +117,12 @@ class MaskModel(ModuleOperation):
         self.origin_param = nn.Parameter(self.origin_param.to(*args, **kwargs))
         self.right_param = nn.Parameter(self.right_param.to(*args, **kwargs))
         self.up_param = nn.Parameter(self.up_param.to(*args, **kwargs))
+        self.scaling_param = nn.Parameter(self.scaling_param.to(*args, **kwargs))
 
         return self
 
     def parameters(self):
-        return [self.origin_param, self.right_param, self.up_param]
+        return [self.origin_param, self.right_param, self.up_param, self.scaling_param]
 
     def state_dict(self):
         return OrderedDict([
@@ -125,3 +130,6 @@ class MaskModel(ModuleOperation):
             ('right_param', self.right_param.cpu().numpy()),
             ('up_param', self.up_param.cpu().numpy()),
         ])
+
+    def load_state_dict(self):
+        raise NotImplementedError

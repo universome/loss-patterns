@@ -82,7 +82,6 @@ class MaskTrainer(BaseTrainer):
 
         self.model = MaskModel(
             self.mask, self.torch_model_builder,
-            scaling=self.config.hp.scaling,
             should_center_origin=self.config.hp.should_center_origin,
             parametrization_type=self.config.hp.parametrization_type)
         self.model = self.model.to(self.config.firelab.device_name)
@@ -158,12 +157,16 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)
         self.writer.add_scalar('bad/train/loss', bad_losses.mean().item(), self.num_iters_done)
         self.writer.add_scalar('bad/train/acc', bad_accs.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('diff/train/loss', good_losses.mean().item() - bad_losses.mean().item(), self.num_iters_done)
+        self.writer.add_scalar('diff/train/acc', good_accs.mean().item() - bad_accs.mean().item(), self.num_iters_done)
 
         self.writer.add_scalar('Stats/lengths/right', self.model.right.norm(), self.num_iters_done)
         self.writer.add_scalar('Stats/lengths/up', self.model.up.norm(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/origin', self.model.origin.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
+        self.writer.add_scalar('Stats/grad_norms/scaling', self.model.scaling_param.grad.norm().item(), self.num_iters_done)
+        self.writer.add_scalar('Stats/scaling', self.model.scaling_param.item(), self.num_iters_done)
 
     def before_training_hook(self):
         self.plot_mask()
@@ -240,10 +243,12 @@ class MaskTrainer(BaseTrainer):
         bad_val_loss, bad_val_acc = validate(self.model, self.train_dataloader, self.criterion)
         self.model.is_good_mode = True
 
-        self.writer.add_scalar('good/val/loss', good_val_loss, self.num_iters_done)
-        self.writer.add_scalar('good/val/acc', good_val_acc, self.num_iters_done)
-        self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_iters_done)
-        self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_iters_done)
+        self.writer.add_scalar('good/val/loss', good_val_loss, self.num_epochs_done)
+        self.writer.add_scalar('good/val/acc', good_val_acc, self.num_epochs_done)
+        self.writer.add_scalar('bad/val/loss', bad_val_loss, self.num_epochs_done)
+        self.writer.add_scalar('bad/val/acc', bad_val_acc, self.num_epochs_done)
+        self.writer.add_scalar('diff/val/loss', good_val_loss - bad_val_loss, self.num_epochs_done)
+        self.writer.add_scalar('diff/val/acc', good_val_acc - bad_val_acc, self.num_epochs_done)
 
         self.plot_all_weights_histograms()
 
@@ -253,6 +258,11 @@ class MaskTrainer(BaseTrainer):
             self.stop(f'Bad val accuracy is too high (epoch #{self.num_epochs_done}): {bad_val_acc}')
         else:
             pass
+
+        if self.num_epochs_done > self.config.get('diff_threshold_warmup_epochs', -1):
+            if good_val_acc - bad_val_acc < self.config.get('good_and_bad_val_acc_diff_threshold', float('-inf')):
+                self.stop(f'Difference between good and val accuracies is too small '\
+                          f'(epoch #{self.num_epochs_done}): {good_val_acc} - {bad_val_acc} = {good_val_acc - bad_val_acc}')
 
     def plot_mask(self):
         fig = plt.figure(figsize=(5, 5))
