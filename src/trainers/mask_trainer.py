@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 from torchvision.datasets import MNIST, FashionMNIST
@@ -93,7 +93,14 @@ class MaskTrainer(BaseTrainer):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
 
     def init_optimizers(self):
-        self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
+        optim_name = self.config.hp.get('optim', 'adam').lower()
+
+        if optim_name == 'adam':
+            self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
+        elif optim_name == 'sgd':
+            self.optim = SGD(self.model.parameters(), lr=self.config.hp.lr, momentum=0.9)
+        else:
+            raise NotImplementedError(f'Unknown optimizer name: {optim_name}')
 
     def train_on_batch(self, batch):
         self.optim.zero_grad()
@@ -179,7 +186,6 @@ class MaskTrainer(BaseTrainer):
         else:
             self.visualize_minimum()
 
-
     def delete_logs(self):
         shutil.rmtree(self.config.firelab.logs_path)
         self.writer.close()
@@ -252,14 +258,15 @@ class MaskTrainer(BaseTrainer):
 
         self.plot_all_weights_histograms()
 
-        if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
-            self.stop(f'Good val accuracy is too low (epoch #{self.num_epochs_done}): {good_val_acc}')
-        elif bad_val_acc > self.config.get('bad_val_acc_stop_threshold', 1.):
-            self.stop(f'Bad val accuracy is too high (epoch #{self.num_epochs_done}): {bad_val_acc}')
-        else:
-            pass
+        if self.num_epochs_done > self.config.git('val_acc_stop_threshold_num_warmup_epochs', -1):
+            if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
+                self.stop(f'Good val accuracy is too low (epoch #{self.num_epochs_done}): {good_val_acc}')
+            elif bad_val_acc > self.config.get('bad_val_acc_stop_threshold', 1.):
+                self.stop(f'Bad val accuracy is too high (epoch #{self.num_epochs_done}): {bad_val_acc}')
+            else:
+                pass
 
-        if self.num_epochs_done > self.config.get('diff_threshold_warmup_epochs', -1):
+        if self.num_epochs_done > self.config.get('diff_threshold_num_warmup_epochs', -1):
             if good_val_acc - bad_val_acc < self.config.get('good_and_bad_val_acc_diff_threshold', float('-inf')):
                 self.stop(f'Difference between good and val accuracies is too small '\
                           f'(epoch #{self.num_epochs_done}): {good_val_acc} - {bad_val_acc} = {good_val_acc - bad_val_acc}')
