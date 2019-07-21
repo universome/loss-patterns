@@ -1,0 +1,53 @@
+title: "Fitting grids of different sizes"
+trainer: "MaskTrainer"
+random_seed: 42
+data_dir: "data"
+model_name: "conv"
+mask_type: "square_grid"
+modules:
+  models: ["model"]
+  optims: ["optim"]
+logging:
+  training_progress: False
+max_num_epochs: 100
+solution_vis:
+  granularity:
+    x: 30
+    y: 30
+  padding: 5
+# max_num_iters: 1
+# solution_vis:
+#   granularity:
+#     x: 3
+#     y: 3
+#   padding: 1
+# good_val_acc_stop_threshold: 0.2
+# bad_val_acc_stop_threshold: 0.9
+diff_threshold_num_warmup_epochs: 30
+good_and_bad_val_acc_diff_threshold: 0.01
+val_freq_epochs: 1
+hp:
+  norm_l2_coef: 10.
+  ort_l2_coef: 10.
+  batch_size: 512
+  grad_clip_threshold: 10
+  negative_loss_coef: 1.0
+  num_good_cells_per_update: 25
+  num_bad_cells_per_update: 25
+  should_center_origin: true
+  neg_loss_clip_threshold: 5
+  grad_clip_threshold: 25
+hpo:
+  num_parallel_experiments_per_gpu: 10
+  scheme: "grid-search"
+  grid:
+    optim: ["adam", "sgd"]
+    lr: [0.001, 0.0005, 0.0001]
+    n_good_cells: [1, 3, 5, 7, 9, 11, 15, 25, 50, 100]
+    parametrization_type: ["simple", "up_orthogonal"]
+    conv_model_config: [
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: true},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: true},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
+    ]

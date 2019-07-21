@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def generate_linerp_plot(linerp_vals_train, linerp_vals_test, title:str=''):
     xs_train = np.linspace(0, 1, len(linerp_vals_train))
     xs_test = np.linspace(0, 1, len(linerp_vals_test))

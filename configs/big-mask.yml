@@ -27,15 +27,16 @@ solution_vis:
 #     y: 3
 #   padding: 1
 hp:
-  should_resize_icon: true
-  target_icon_size: [50, 50]
-  icon_file_path: "main-icons/start-up (1).png"
+  # should_resize_icon: true
+  # target_icon_size: [50, 50]
+  # icon_file_path: "main-icons/start-up (1).png"
+  icon_file_path: "custom-icons/mona-lisa.png"
   should_center_origin: true
   norm_l2_coef: 1.
   ort_l2_coef: 10.
-  batch_size: 256
+  batch_size: 512
 hpo:
-  num_parallel_experiments_per_gpu: 12
+  num_parallel_experiments_per_gpu: 3
   scheme: "random-search"
   num_experiments: 250
   grid:

@@ -10,8 +10,10 @@ modules:
 logging:
   training_progress: False
 max_num_epochs: 100
-good_val_acc_stop_threshold: 0.2
-bad_val_acc_stop_threshold: 0.9
+# good_val_acc_stop_threshold: 0.2
+# bad_val_acc_stop_threshold: 0.9
+good_and_bad_val_acc_diff_threshold: 0.01
+diff_threshold_num_warmup_epochs: 30
 val_freq_epochs: 1
 solution_vis:
   granularity:
@@ -36,10 +38,11 @@ hp:
   should_center_origin: true
   target_icon_size: [50, 50]
 hpo:
-  num_parallel_experiments_per_gpu: 10
+  num_parallel_experiments_per_gpu: 8
   scheme: "random-search"
   num_experiments: 1000
   grid:
+    optim: ["adam", "sgd"]
     lr: [0.001, 0.0005, 0.0001, 0.00001]
     scaling: [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1.]
     neg_loss_clip_threshold: [1, 5, 10, 100]
@@ -94,6 +97,10 @@ hpo:
     conv_model_config: [
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: true},
       {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
+      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
       {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: true},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
+      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
       {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
     ]

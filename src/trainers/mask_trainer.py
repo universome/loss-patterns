@@ -46,6 +46,9 @@ class MaskTrainer(BaseTrainer):
             self.mask = generate_square_mask(self.config.hp.square_size)
             self.mask = randomly_fill_square(self.mask, self.config.hp.fill_prob)
             self.mask = make_mask_ternary(self.mask)
+        elif self.config.mask_type == 'square_grid':
+            self.mask = generate_square_grid_mask(self.config.hp.n_good_cells)
+            self.mask = make_mask_ternary(self.mask)
         else:
             raise NotImplementedError('Mask type %s is not supported' % self.config.mask_type)
 
@@ -258,7 +261,7 @@ class MaskTrainer(BaseTrainer):
 
         self.plot_all_weights_histograms()
 
-        if self.num_epochs_done > self.config.git('val_acc_stop_threshold_num_warmup_epochs', -1):
+        if self.num_epochs_done > self.config.get('val_acc_stop_threshold_num_warmup_epochs', -1):
             if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
                 self.stop(f'Good val accuracy is too low (epoch #{self.num_epochs_done}): {good_val_acc}')
             elif bad_val_acc > self.config.get('bad_val_acc_stop_threshold', 1.):
@@ -374,3 +377,11 @@ def convert_img_to_binary(img, threshold:float=0.5):
         return (img > threshold).astype(np.float)
     else:
         return (img[:, :, 3] > threshold).astype(np.float)
+
+
+def generate_square_grid_mask(n_good_cells:int) -> np.ndarray:
+    mask = np.zeros((2 * n_good_cells + 1, 2 * n_good_cells + 1))
+    pos_cells_x_idx, pos_cells_y_idx = np.meshgrid(np.arange(1, 2 * n_good_cells, 2), np.arange(1, 2 * n_good_cells, 2))
+    mask[pos_cells_x_idx, pos_cells_y_idx] = 1
+
+    return mask
