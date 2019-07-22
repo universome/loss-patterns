@@ -21,6 +21,7 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
     hps = []
     val_acc_diffs = []
     finished_exps = []
+    images = []
 
     for i, hpo_exp_name in tqdm(enumerate(hpo_exp_names), total=len(hpo_exp_names)):
         assert len(get_dir_children(os.path.join(logs_dir, hpo_exp_name))) == 1, \
@@ -35,14 +36,19 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
             print(f'Skipping {hpo_exp_name} because summary does not exist yet')
             continue
 
-        curr_val_acc_diffs, curr_hp = extract_data(config_path, logs_path)
+        curr_val_acc_diffs, curr_hp, curr_image = extract_data(config_path, logs_path)
 
         if len(curr_val_acc_diffs) != 100:
             print(f'Skipping {hpo_exp_name} because not finished yet (only {len(curr_val_acc_diffs)})')
             continue
 
+        if curr_image is None:
+            print(f'Skipping {hpo_exp_name} because image does not yet')
+            continue
+
         val_acc_diffs.append(curr_val_acc_diffs)
         hps.append(curr_hp)
+        images.append(curr_image)
         finished_exps.append(hpo_exp_name)
 
     # print('val_acc_diffs', val_acc_diffs)
@@ -53,11 +59,16 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
     hps = pd.DataFrame(data=hps, index=finished_exps)
 
     clean_dir(output_dir, create=True)
-    val_acc_diffs.to_csv(f'{output_dir}/val_acc_diffs.csv')
-    hps.to_csv(f'{output_dir}/hps.csv')
+    val_acc_diffs.to_csv(os.path.join(output_dir, 'val_acc_diffs.csv'))
+    hps.to_csv(os.path.join(output_dir, 'hps.csv'))
+
+    os.mkdir(os.path.join(output_dir, 'images'))
+    for exp_name, image in zip(finished_exps, images):
+        with open(os.path.join(output_dir, 'images', f'{exp_name}.png'), 'wb') as f:
+            f.write(image)
 
 
-def extract_data(config_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[float], Dict]:
+def extract_data(config_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[float], Dict, str]:
     # TODO: we load summary and not config here. Use config after the bug is fixed
     config = load_config(config_path).config
     events_acc = EventAccumulator(logs_path)
@@ -67,7 +78,12 @@ def extract_data(config_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[f
     hp = config.hp.to_dict()
     hp['n_conv_layers'] = len(config.hp.conv_model_config.conv_sizes)
 
-    return val_acc_diffs, hp
+    if 'Minimum' in events_acc.images.Keys():
+        image = events_acc.Images('Minimum')[0].encoded_image_string
+    else:
+        image = None
+
+    return val_acc_diffs, hp, image
 
 
 
