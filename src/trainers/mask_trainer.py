@@ -11,8 +11,8 @@ import torch.nn as nn
 from torch.optim import Adam, SGD
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
-from torchvision.datasets import MNIST, FashionMNIST
-from torchvision.transforms import ToTensor
+from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
+from torchvision import transforms
 from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -54,19 +54,26 @@ class MaskTrainer(BaseTrainer):
 
     def init_dataloaders(self):
         dataset = self.config.hp.get('dataset', 'FashionMNIST')
-        if dataset == 'FashionMNIST':
-            dataset_class = FashionMNIST
-        elif dataset == 'MNIST':
-            dataset_class = MNIST
-        else:
-            raise NotImplementedError(f"Unknown dataset: {dataset}")
-
         batch_size = self.config.hp.batch_size
         project_path = self.config.firelab.project_path
         data_dir = os.path.join(project_path, self.config.data_dir)
 
-        data_train = dataset_class(data_dir, train=True, transform=ToTensor())
-        data_test = dataset_class(data_dir, train=False, transform=ToTensor())
+        if dataset == 'FashionMNIST':
+            data_train = FashionMNIST(data_dir, train=True, transform=transforms.ToTensor())
+            data_test = FashionMNIST(data_dir, train=False, transform=transforms.ToTensor())
+        elif dataset == 'MNIST':
+            data_train = MNIST(data_dir, train=True, transform=transforms.ToTensor())
+            data_test = MNIST(data_dir, train=False, transform=transforms.ToTensor())
+        elif dataset == 'CIFAR10':
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            ])
+            data_train = CIFAR10(data_dir, train=True, transform=transform)
+            data_test = CIFAR10(data_dir, train=False, transform=transform)
+        else:
+            raise NotImplementedError(f"Unknown dataset: {dataset}")
+
         data_vis = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
 
         self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=2, shuffle=True)
@@ -75,7 +82,9 @@ class MaskTrainer(BaseTrainer):
 
     def init_models(self):
         if self.config.model_name == "vgg":
-            self.torch_model_builder = VGG11
+            self.torch_model_builder = lambda: VGG11(
+                n_input_channels=self.config.hp.get('n_input_channels', 1),
+                use_bn=self.config.hp.get('use_bn', True))
         elif self.config.model_name == "simple":
             self.torch_model_builder = SimpleModel
         elif self.config.model_name == "conv":

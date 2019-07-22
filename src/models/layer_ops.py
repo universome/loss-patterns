@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.model_zoo.layers import Flatten
+from src.model_zoo.layers import Flatten, Noop
 from src.utils import weight_to_param, param_sizes
 
 
@@ -201,6 +201,8 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             ops.append(Flatten())
         elif isinstance(module, nn.AdaptiveAvgPool2d):
             ops.append(nn.AdaptiveAvgPool2d(module.output_size))
+        elif isinstance(module, Noop):
+            ops.append(Noop())
         elif isinstance(module, nn.Sequential):
             num_params_in_module:int = len(list(module.parameters()))
             curr_weight = torch.cat([p.view(-1) for p in params[:num_params_in_module]])
