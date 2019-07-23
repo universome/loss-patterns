@@ -93,7 +93,7 @@ class MaskTrainer(BaseTrainer):
         elif self.config.model_name == "simple":
             self.torch_model_builder = SimpleModel
         elif self.config.model_name == "conv":
-            self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config)
+            self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config).nn
         else:
             raise NotImplementedError("Model %s is not supported" % self.config.model_name)
 

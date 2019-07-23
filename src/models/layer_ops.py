@@ -7,6 +7,9 @@ import torch.nn.functional as F
 from src.model_zoo.layers import Flatten, Noop
 from src.utils import weight_to_param, param_sizes
 
+from src.models.layers import ReparametrizedBatchNorm2d
+from src.models.conv_model import ConvBlock
+
 
 class ModuleOperation:
     def __init__(self):
@@ -116,41 +119,6 @@ class BatchNormOp(ModuleOperation):
             weight=self.weight, bias=self.bias, training=True)
 
 
-class ReparametrizedBatchNorm2d(nn.BatchNorm2d):
-    def __init__(self, *args, **kwargs):
-        super(ReparametrizedBatchNorm2d, self).__init__(*args, **kwargs)
-
-    def reset_parameters(self):
-        super(ReparametrizedBatchNorm2d, self).reset_parameters()
-        self.weight.data.add_(-0.5) # So it has zero mean
-
-    def forward(self, x):
-        self._check_input_dim(x)
-
-        # exponential_average_factor is self.momentum set to
-        # (when it is available) only so that if gets updated
-        # in ONNX graph when this node is exported to ONNX.
-        if self.momentum is None:
-            exponential_average_factor = 0.0
-        else:
-            exponential_average_factor = self.momentum
-
-        if self.training and self.track_running_stats:
-            # TODO: if statement only here to tell the jit to skip emitting this when it is None
-            if self.num_batches_tracked is not None:
-                self.num_batches_tracked += 1
-
-                if self.momentum is None:  # use cumulative moving average
-                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
-                else:  # use exponential moving average
-                    exponential_average_factor = self.momentum
-
-        return F.batch_norm(
-            x, self.running_mean, self.running_var, self.weight + 0.5, self.bias,
-            self.training or not self.track_running_stats,
-            exponential_average_factor, self.eps)
-
-
 class ReparametrizedBatchNorm2dOp(ModuleOperation):
     def __init__(self, weight, bias):
         super(ReparametrizedBatchNorm2dOp, self).__init__()
@@ -168,9 +136,20 @@ class ReparametrizedBatchNorm2dOp(ModuleOperation):
             weight=self.weight + 0.5, bias=self.bias, training=True)
 
 
+class ResidualOp(ModuleOperation):
+    def __init__(self, transform):
+        self.transform = transform
+
+    def __call__(self, x):
+        return self.transform(x) + x
+
+
 def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
     ops = []
     params = weight_to_param(weight, param_sizes(dummy_model.parameters()))
+
+    assert isinstance(dummy_model, nn.Sequential), \
+        f"Expected model to be nn.Sequential, but got {dummy_model}"
 
     for module in dummy_model.children():
         if isinstance(module, nn.Linear):
@@ -207,6 +186,17 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             num_params_in_module:int = len(list(module.parameters()))
             curr_weight = torch.cat([p.view(-1) for p in params[:num_params_in_module]])
             ops.append(convert_sequential_model_to_op(curr_weight, module))
+            params = params[num_params_in_module:]
+        elif isinstance(module, ConvBlock):
+            num_params_in_module:int = len(list(module.parameters()))
+            curr_weight = torch.cat([p.view(-1) for p in params[:num_params_in_module]])
+            block_op = convert_sequential_model_to_op(curr_weight, module.block)
+
+            if module.is_residual:
+                ops.append(ResidualOp(block_op))
+            else:
+                ops.append(block_op)
+
             params = params[num_params_in_module:]
         else:
             raise NotImplementedError("Module of type %s is not supported." % type(module))

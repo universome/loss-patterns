@@ -9,8 +9,6 @@ modules:
   optims: ["optim"]
 logging:
   training_progress: False
-# good_val_acc_stop_threshold: 0.2
-# bad_val_acc_stop_threshold: 0.9
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 30
 val_freq_epochs: 1

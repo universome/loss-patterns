@@ -9,6 +9,8 @@ modules:
   optims: ["optim"]
 logging:
   training_progress: False
+good_and_bad_val_acc_diff_threshold: 0.01
+diff_threshold_num_warmup_epochs: 30
 max_num_epochs: 100
 solution_vis:
   granularity:
@@ -21,26 +23,29 @@ solution_vis:
 #     x: 3
 #     y: 3
 #   padding: 1
-good_val_acc_stop_threshold: 0.2
-bad_val_acc_stop_threshold: 0.9
 val_freq_epochs: 1
 hp:
+  optim: "adam"
   norm_l2_coef: 10.
   ort_l2_coef: 10.
   batch_size: 512
-  grad_clip_threshold: 10
+  grad_clip_threshold: 100
   negative_loss_coef: 1.0
-  parametrization_type: "simple"
-  num_good_cells_per_update: 25
-  num_bad_cells_per_update: 25
+  num_good_cells_per_update: 50
+  num_bad_cells_per_update: 50
   should_center_origin: true
   neg_loss_clip_threshold: 5
-  grad_clip_threshold: 25
+  square_size: 30
 hpo:
-  num_parallel_experiments_per_gpu: 10
+  num_parallel_experiments_per_gpu: 15
   scheme: "grid-search"
   grid:
-    lr: [0.001, 0.0005, 0.0001]
-    scaling: [0.01, 0.1, 0.25]
-    fill_prob: [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]
-    square_size: [3, 5, 7, 9, 11, 15, 25, 50, 100]
+    parametrization_type: ["simple", "up_orthogonal"]
+    lr: [0.001, 0.0001]
+    fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    _seeds: [1, 2, 3, 4, 5]
+    conv_model_config: [
+      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128]},
+      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true},
+      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_skip_connection: true},
+    ]

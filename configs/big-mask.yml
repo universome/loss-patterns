@@ -35,13 +35,13 @@ hp:
   norm_l2_coef: 1.
   ort_l2_coef: 10.
   batch_size: 512
+  optim: "adam"
 hpo:
   num_parallel_experiments_per_gpu: 3
   scheme: "random-search"
   num_experiments: 250
   grid:
     negative_loss_coef: [0.5, 1., 5.]
-    optim: ["adam", "sgd"]
     parametrization_type: ["simple", "up_orthogonal"]
     num_good_cells_per_update: [25, 50, 100]
     num_bad_cells_per_update: [25, 50, 100]

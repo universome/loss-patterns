@@ -3,9 +3,9 @@ from typing import List
 import torch
 import torch.nn as nn
 
-from .layer_ops import *
 from src.utils import weight_to_param, param_sizes, weight_vector
 from src.model_zoo.layers import Flatten, Noop
+from .layers import ReparametrizedBatchNorm2d
 
 
 class VGG(nn.Module):
