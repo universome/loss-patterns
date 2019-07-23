@@ -3,7 +3,7 @@ import shutil
 import time
 import random
 from itertools import chain
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import numpy as np
 import torch
@@ -29,6 +29,9 @@ class MaskTrainer(BaseTrainer):
     def __init__(self, config):
         super(MaskTrainer, self).__init__(config)
 
+        self.init_mask()
+
+    def init_mask(self):
         if self.config.mask_type == 'icon':
             project_path = self.config.firelab.project_path
             data_dir = os.path.join(project_path, self.config.data_dir)
@@ -74,11 +77,13 @@ class MaskTrainer(BaseTrainer):
         else:
             raise NotImplementedError(f"Unknown dataset: {dataset}")
 
-        data_vis = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
+        data_vis_train = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
+        data_vis_test = Subset(data_test, random.sample(range(len(data_test)), self.config.get('n_points_for_vis', 1000)))
 
         self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=2, shuffle=True)
         self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=2, shuffle=False)
-        self.vis_dataloader = DataLoader(data_vis, batch_size=batch_size, num_workers=2, shuffle=False)
+        self.vis_train_dataloader = DataLoader(data_vis_train, batch_size=batch_size, num_workers=2, shuffle=False)
+        self.vis_test_dataloader = DataLoader(data_vis_test, batch_size=batch_size, num_workers=2, shuffle=False)
 
     def init_models(self):
         if self.config.model_name == "vgg":
@@ -189,20 +194,21 @@ class MaskTrainer(BaseTrainer):
 
     def before_training_hook(self):
         self.plot_mask()
-        self.plot_all_weights_histograms()
+        # self.plot_all_weights_histograms()
         self.write_config()
 
     def after_training_hook(self):
         if self.is_explicitly_stopped:
             self.delete_logs() # So tensorboard does not lag
         else:
-            self.visualize_minimum()
+            self.visualize_minimum(self.vis_train_dataloader, 'train')
+            self.visualize_minimum(self.vis_test_dataloader, 'test')
 
     def delete_logs(self):
         shutil.rmtree(self.config.firelab.logs_path)
         self.writer.close()
 
-    def compute_mask_scores(self):
+    def compute_mask_scores(self, dataloader):
         start = time.time()
 
         pad = self.config.get('solution_vis.padding', 1)
@@ -212,44 +218,45 @@ class MaskTrainer(BaseTrainer):
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
         dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
-        scores = [[self.compute_mask_score(x, y, dummy_model) for y in ys] for x in xs]
+        scores = [[self.compute_mask_score(x, y, dummy_model, dataloader) for y in ys] for x in xs]
         self.logger.info(f'Scoring took {time.time() - start}')
 
         return xs, ys, scores
 
-    def compute_mask_score(self, x, y, dummy_model):
+    def compute_mask_score(self, x, y, dummy_model, dataloader):
         w = self.model.compute_point(x, y, should_orthogonalize=True)
-        return validate_weights(w, self.vis_dataloader, dummy_model)
 
-    def visualize_minimum(self):
-        xs, ys, scores = self.compute_mask_scores()
-        fig = self.build_minimum_figure(xs, ys, scores)
-        self.writer.add_figure('Minimum', fig, self.num_iters_done)
-        self.save_minima_grid(scores)
+        return validate_weights(w, dataloader, dummy_model)
 
-    def build_minimum_figure(self, xs, ys, scores):
+    def visualize_minimum(self, dataloader:DataLoader, subtitle:str):
+        xs, ys, scores = self.compute_mask_scores(dataloader)
+        fig = self.build_minimum_figure(xs, ys, scores, subtitle)
+        self.writer.add_figure(f'Minimum_{subtitle}', fig, self.num_iters_done)
+        self.save_minima_grid(scores, subtitle)
+
+    def build_minimum_figure(self, xs, ys, scores, subtitle:str):
         X, Y = np.meshgrid(xs, ys)
 
         fig = plt.figure(figsize=(20, 4))
 
         plt.subplot(141)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
-        plt.title('Loss [test]')
+        cntr = plt.contourf(X, Y, [[s[0] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
+        plt.title(f'Loss [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(142)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
-        plt.title('Accuracy [test]')
+        cntr = plt.contourf(X, Y, [[s[1] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
+        plt.title(f'Accfuracy [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(143)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=100)
-        plt.title('Loss [test]')
+        cntr = plt.contourf(X, Y, [[s[0] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=100)
+        plt.title(f'Loss [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(144)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_line] for s_line in scores], cmap="RdBu_r", levels=np.linspace(0, 1, 100))
-        plt.title('Accuracy [test]')
+        cntr = plt.contourf(X, Y, [[s[1] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0, 1, 100))
+        plt.title(f'Accfuracy [{subtitle}]')
         plt.colorbar(cntr)
 
         return fig
@@ -268,7 +275,7 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('diff/val/loss', good_val_loss - bad_val_loss, self.num_epochs_done)
         self.writer.add_scalar('diff/val/acc', good_val_acc - bad_val_acc, self.num_epochs_done)
 
-        self.plot_all_weights_histograms()
+        # self.plot_all_weights_histograms()
 
         if self.num_epochs_done > self.config.get('val_acc_stop_threshold_num_warmup_epochs', -1):
             if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
@@ -308,9 +315,9 @@ class MaskTrainer(BaseTrainer):
         config_yml = config_yml.replace('\n', '  \n') # Because tensorboard uses markdown
         self.writer.add_text('Config', config_yml, self.num_iters_done)
 
-    def save_minima_grid(self, minima_grid):
-        save_path = os.path.join(self.config.firelab.custom_data_path, 'minima_grid.npy')
-        np.save(save_path, minima_grid)
+    def save_minima_grid(self, scores, subtitle:str):
+        save_path = os.path.join(self.config.firelab.custom_data_path, f'minima_grid_{subtitle}.npy')
+        np.save(save_path, scores)
 
 
 def generate_square_mask(square_size):

@@ -9,12 +9,12 @@ modules:
   optims: ["optim"]
 logging:
   training_progress: False
-max_num_epochs: 100
 # good_val_acc_stop_threshold: 0.2
 # bad_val_acc_stop_threshold: 0.9
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 30
 val_freq_epochs: 1
+max_num_epochs: 100
 solution_vis:
   granularity:
     x: 32
@@ -30,77 +30,38 @@ hp:
   norm_l2_coef: 10.
   ort_l2_coef: 10.
   batch_size: 512
-  grad_clip_threshold: 10
   negative_loss_coef: 1.0
   num_good_cells_per_update: 50
   num_bad_cells_per_update: 50
   should_resize_icon: true
   should_center_origin: true
   target_icon_size: [50, 50]
+  optim: "adam"
+  grad_clip_threshold: 100
+  conv_model_config:
+    conv_sizes: [1, 8, 32, 64]
+    dense_sizes: [576, 128]
+    use_bn: false
 hpo:
-  num_parallel_experiments_per_gpu: 8
-  scheme: "random-search"
-  num_experiments: 1000
+  num_parallel_experiments_per_gpu: 7
+  scheme: "grid-search"
   grid:
-    optim: ["adam", "sgd"]
-    lr: [0.001, 0.0005, 0.0001, 0.00001]
-    scaling: [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1.]
-    neg_loss_clip_threshold: [1, 5, 10, 100]
-    grad_clip_threshold: [1, 5, 10, 100]
-    parametrization_type: ["simple", "up_orthogonal", "difference"]
+    lr: [0.0005, 0.00025, 0.0001, 0.00005]
+    neg_loss_clip_threshold: [2, 5]
+    parametrization_type: ["simple", "up_orthogonal"]
     icon_file_path: [
-      "chosen-icons/041-star of david.png",
-      "chosen-icons/airplane-shape.png",
-      "chosen-icons/balalaika (1).png",
-      "chosen-icons/balalaika.png",
-      "chosen-icons/batman (1).png",
-      "chosen-icons/batman (2).png",
-      "chosen-icons/batman-logo.png",
-      "chosen-icons/batman.png",
-      "chosen-icons/black-evil-cat.png",
-      "chosen-icons/cat (1).png",
-      "chosen-icons/cat-face.png",
-      "chosen-icons/cat.png",
-      "chosen-icons/christ-the-redeemer.png",
-      "chosen-icons/darth-vader.png",
-      "chosen-icons/duck.png",
-      "chosen-icons/duck-side-view-outline.png",
-      "chosen-icons/eiffel-tower (1).png",
-      "chosen-icons/eiffel-tower.png",
-      "chosen-icons/freemasonry.png",
-      "chosen-icons/goose.png",
-      "chosen-icons/halloween-black-cat.png",
-      "chosen-icons/heart.png",
-      "chosen-icons/holy-bible-book.png",
-      "chosen-icons/jesus.png",
-      "chosen-icons/judaism.png",
-      "chosen-icons/kremlin.png",
-      "chosen-icons/lego.png",
-      "chosen-icons/locomotive.png",
-      "chosen-icons/mona-lisa.png",
-      "chosen-icons/penguin (1).png",
-      "chosen-icons/penguin (2).png",
-      "chosen-icons/penguin.png",
-      "chosen-icons/plane.png",
-      "chosen-icons/pokeball.png",
-      "chosen-icons/pytorch-logo.png",
-      "chosen-icons/r2d2.png",
-      "chosen-icons/railroad.png",
-      "chosen-icons/risk-skull.png",
-      "chosen-icons/russian.png",
-      "chosen-icons/santa-claus.png",
-      "chosen-icons/star-of-david.png",
-      "chosen-icons/start-up (1).png",
-      "chosen-icons/start-up.png"
-    ]
-
-    conv_model_config: [
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: true},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: true},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
+      "main-icons/041-star of david.png",
+      "main-icons/balalaika (1).png",
+      "main-icons/batman (1).png",
+      "main-icons/batman-logo.png",
+      "main-icons/black-evil-cat.png",
+      "main-icons/duck-side-view-outline.png",
+      "main-icons/eiffel-tower.png",
+      "main-icons/freemasonry.png",
+      "main-icons/kremlin.png",
+      "main-icons/lego.png",
+      "main-icons/locomotive.png",
+      "main-icons/r2d2.png",
+      "main-icons/risk-skull.png",
+      "main-icons/start-up (1).png"
     ]
