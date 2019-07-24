@@ -23,11 +23,12 @@ class MaskModel(ModuleOperation):
         self.is_good_mode = True
         self.should_center_origin = should_center_origin
         self.parametrization_type = parametrization_type
+        self._parameters = {}
 
-        self.origin_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
-        self.right_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
-        self.up_param = nn.Parameter(weight_vector(torch_model_cls().parameters()))
-        self.scaling_param = nn.Parameter(torch.tensor(0.1))
+        self.register_param('origin_param', weight_vector(torch_model_cls().parameters()))
+        self.register_param('right_param', weight_vector(torch_model_cls().parameters()))
+        self.register_param('up_param', weight_vector(torch_model_cls().parameters()))
+        self.register_param('scaling_param', torch.tensor(0.1))
 
         assert torch.dot(self.right, self.up) < 30 or self.parametrization_type == 'difference', \
             f"Dot product is too high ({torch.dot(self.right, self.up)}). Looks suspicious." + \
@@ -114,22 +115,22 @@ class MaskModel(ModuleOperation):
         return (self.up.norm() - self.right.norm()).abs()
 
     def to(self, *args, **kwargs):
-        self.origin_param = nn.Parameter(self.origin_param.to(*args, **kwargs))
-        self.right_param = nn.Parameter(self.right_param.to(*args, **kwargs))
-        self.up_param = nn.Parameter(self.up_param.to(*args, **kwargs))
-        self.scaling_param = nn.Parameter(self.scaling_param.to(*args, **kwargs))
+        for param_name, param_value in self._parameters.items():
+            self.register_param(param_name, param_value.to(*args, **kwargs))
 
         return self
 
     def parameters(self):
-        return [self.origin_param, self.right_param, self.up_param, self.scaling_param]
+        return [p for p in self._parameters.values()]
 
     def state_dict(self):
-        return OrderedDict([
-            ('origin', self.origin_param.cpu().numpy()),
-            ('right_param', self.right_param.cpu().numpy()),
-            ('up_param', self.up_param.cpu().numpy()),
-        ])
+        return OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
 
-    def load_state_dict(self):
-        raise NotImplementedError
+    def load_state_dict(self, state_dict:OrderedDict):
+        for k, v in state_dict.items():
+            self.register_param(k, v)
+
+    def register_param(self, param_name, param_value):
+        setattr(self, param_name, nn.Parameter(param_value))
+
+        self._parameters[param_name] = getattr(self, param_name)

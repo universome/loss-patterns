@@ -12,6 +12,8 @@ logging:
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 30
 max_num_epochs: 100
+checkpoint:
+  freq_epochs: 50
 solution_vis:
   granularity:
     x: 30
