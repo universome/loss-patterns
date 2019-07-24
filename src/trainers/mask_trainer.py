@@ -80,10 +80,10 @@ class MaskTrainer(BaseTrainer):
         data_vis_train = Subset(data_train, random.sample(range(len(data_train)), self.config.get('n_points_for_vis', 1000)))
         data_vis_test = Subset(data_test, random.sample(range(len(data_test)), self.config.get('n_points_for_vis', 1000)))
 
-        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=2, shuffle=True)
-        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=2, shuffle=False)
-        self.vis_train_dataloader = DataLoader(data_vis_train, batch_size=batch_size, num_workers=2, shuffle=False)
-        self.vis_test_dataloader = DataLoader(data_vis_test, batch_size=batch_size, num_workers=2, shuffle=False)
+        self.train_dataloader = DataLoader(data_train, batch_size=batch_size, num_workers=0, shuffle=True)
+        self.val_dataloader = DataLoader(data_test, batch_size=batch_size, num_workers=0, shuffle=False)
+        self.vis_train_dataloader = DataLoader(data_vis_train, batch_size=batch_size, num_workers=0, shuffle=False)
+        self.vis_test_dataloader = DataLoader(data_vis_test, batch_size=batch_size, num_workers=0, shuffle=False)
 
     def init_models(self):
         if self.config.model_name == "vgg":
@@ -194,7 +194,8 @@ class MaskTrainer(BaseTrainer):
 
     def before_training_hook(self):
         self.plot_mask()
-        # self.plot_all_weights_histograms()
+        self.save_mask()
+        self.plot_all_weights_histograms()
         self.write_config()
 
     def after_training_hook(self):
@@ -275,7 +276,7 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_scalar('diff/val/loss', good_val_loss - bad_val_loss, self.num_epochs_done)
         self.writer.add_scalar('diff/val/acc', good_val_acc - bad_val_acc, self.num_epochs_done)
 
-        # self.plot_all_weights_histograms()
+        self.plot_all_weights_histograms()
 
         if self.num_epochs_done > self.config.get('val_acc_stop_threshold_num_warmup_epochs', -1):
             if good_val_acc < self.config.get('good_val_acc_stop_threshold', 0.):
@@ -297,6 +298,10 @@ class MaskTrainer(BaseTrainer):
         plt.imshow(mask_img, cmap='gray')
         self.writer.add_figure('Mask', fig, self.num_iters_done)
 
+    def save_mask(self):
+        save_path = os.path.join(self.config.firelab.custom_data_path, 'mask.npy')
+        np.save(save_path, self.mask)
+
     def plot_params_histograms(self, w, subtag:str):
         dummy_model = self.torch_model_builder()
         params = weight_to_param(w, param_sizes(dummy_model.parameters()))
@@ -306,9 +311,11 @@ class MaskTrainer(BaseTrainer):
             self.writer.add_histogram(tag, param, self.num_iters_done)
 
     def plot_all_weights_histograms(self):
-        self.plot_params_histograms(self.model.origin + self.model.right, 'origin_right')
-        self.plot_params_histograms(self.model.origin + self.model.up, 'origin_up')
-        self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin_up_right')
+        # TODO: we do not need histograms currently...
+        # self.plot_params_histograms(self.model.origin + self.model.right, 'origin_right')
+        # self.plot_params_histograms(self.model.origin + self.model.up, 'origin_up')
+        # self.plot_params_histograms(self.model.origin + self.model.up + self.model.right, 'origin_up_right')
+        pass
 
     def write_config(self):
         config_yml = yaml.safe_dump(self.config.to_dict())

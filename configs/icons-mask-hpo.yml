@@ -38,10 +38,10 @@ hp:
   grad_clip_threshold: 100
   conv_model_config:
     conv_sizes: [1, 8, 32, 64]
-    dense_sizes: [576, 128]
+    dense_sizes: [1024, 128]
     use_bn: false
 hpo:
-  num_parallel_experiments_per_gpu: 7
+  num_parallel_experiments_per_gpu: 5
   scheme: "grid-search"
   grid:
     lr: [0.0005, 0.00025, 0.0001, 0.00005]

@@ -36,12 +36,12 @@ hp:
   should_center_origin: true
   neg_loss_clip_threshold: 5
   square_size: 30
+  parametrization_type: "up_orthogonal"
+  lr: 0.0003
 hpo:
-  num_parallel_experiments_per_gpu: 15
+  num_parallel_experiments_per_gpu: 4
   scheme: "grid-search"
   grid:
-    parametrization_type: ["simple", "up_orthogonal"]
-    lr: [0.001, 0.0001]
     fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     _seeds: [1, 2, 3, 4, 5]
     conv_model_config: [
