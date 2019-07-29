@@ -8,17 +8,11 @@ modules:
   models: ["model"]
   optims: ["optim"]
 logging:
-  training_progress: False
+  training_progress: True
 good_and_bad_val_acc_diff_threshold: 0.01
-diff_threshold_num_warmup_epochs: 25
+diff_threshold_num_warmup_epochs: 50
 val_freq_epochs: 1
-
-max_num_epochs: 50
-solution_vis:
-  granularity:
-    x: 50
-    y: 50
-  padding: 5
+max_num_epochs: 100
 
 # For debug purposes
 # max_num_iters: 1
@@ -29,27 +23,27 @@ solution_vis:
 #   padding: 1
 
 hp:
-  should_resize_icon: true
-  target_icon_size: [50, 50]
-  icon_file_path: "main-icons/duck-side-view-outline.png"
+  should_resize_icon: false
+  # target_icon_size: [50, 50]
+  # icon_file_path: "main-icons/duck-side-view-outline.png"
+  icon_file_path: "custom-icons/mona-lisa.png"
   should_center_origin: true
   norm_l2_coef: 1.
   ort_l2_coef: 10.
-  batch_size: 256
+  batch_size: 512
   dataset: "CIFAR10"
   num_input_channels: 3
   optim: "adam"
   num_good_cells_per_update: 50
   num_bad_cells_per_update: 50
   n_input_channels: 3
+  parametrization_type: "up_orthogonal"
+  negative_loss_coef: 1.
+  neg_loss_clip_threshold: 2.5
+  grad_clip_threshold: 100
 hpo:
-  num_parallel_experiments_per_gpu: 2
-  scheme: "random-search"
-  num_experiments: 100
+  num_parallel_experiments_per_gpu: 1
+  scheme: "grid-search"
   grid:
-    negative_loss_coef: [0.5, 1., 5.]
-    parametrization_type: ["simple", "up_orthogonal"]
-    lr: [0.005, 0.001, 0.0005, 0.00025, 0.0001, 0.00005]
-    neg_loss_clip_threshold: [0.5, 1., 2., 3., 4., 5.]
-    grad_clip_threshold: [1, 5, 10, 25, 100]
+    lr: [0.001, 0.00025, 0.0001, 0.00005]
     use_bn: [true, false]
