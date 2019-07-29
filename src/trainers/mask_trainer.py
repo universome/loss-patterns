@@ -89,7 +89,7 @@ class MaskTrainer(BaseTrainer):
         if self.config.model_name == "vgg":
             self.torch_model_builder = lambda: VGG11(
                 n_input_channels=self.config.hp.get('n_input_channels', 1),
-                use_bn=self.config.hp.get('use_bn', True))
+                use_bn=self.config.hp.get('use_bn', True)).model
         elif self.config.model_name == "simple":
             self.torch_model_builder = SimpleModel
         elif self.config.model_name == "conv":
@@ -212,9 +212,9 @@ class MaskTrainer(BaseTrainer):
     def compute_mask_scores(self, dataloader):
         start = time.time()
 
-        pad = self.config.get('solution_vis.padding', 1)
-        x_num_points = self.config.get('solution_vis.granularity.x', self.mask.shape[0])
-        y_num_points = self.config.get('solution_vis.granularity.y', self.mask.shape[1])
+        pad = self.config.get('solution_vis.padding', 0)
+        x_num_points = self.config.get('solution_vis.granularity.x', self.mask.shape[0] + 2 * pad)
+        y_num_points = self.config.get('solution_vis.granularity.y', self.mask.shape[1] + 2 * pad)
         xs = np.linspace(-pad, self.mask.shape[0] + pad, x_num_points)
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
