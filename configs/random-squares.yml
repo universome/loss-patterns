@@ -14,11 +14,6 @@ diff_threshold_num_warmup_epochs: 30
 max_num_epochs: 100
 checkpoint:
   freq_epochs: 50
-solution_vis:
-  granularity:
-    x: 30
-    y: 30
-  padding: 5
 # max_num_iters: 1
 # solution_vis:
 #   granularity:

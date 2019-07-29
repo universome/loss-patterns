@@ -15,11 +15,6 @@ val_freq_epochs: 1
 max_num_epochs: 100
 checkpoint:
   freq_epochs: 50
-solution_vis:
-  granularity:
-    x: 50
-    y: 50
-  padding: 5
 # max_num_iters: 1
 # solution_vis:
 #   granularity:
