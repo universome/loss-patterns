@@ -13,9 +13,7 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
     logs_dir = os.path.join(experiment_dir, 'logs')
-
-    # TODO: use configs instead of summaries when the bug is fixed
-    configs_dir = os.path.join(experiment_dir, 'summaries')
+    summaries_dir = os.path.join(experiment_dir, 'summaries')
 
     hpo_exp_names = sorted([exp for exp in os.listdir(logs_dir)])
     hps = []
@@ -29,26 +27,26 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
 
         # if i > 1: break
 
-        config_path = os.path.join(configs_dir, f'{hpo_exp_name}.yml')
+        summary_path = os.path.join(summarys_dir, f'{hpo_exp_name}.yml')
         logs_path = get_dir_children(os.path.join(logs_dir, hpo_exp_name))[0]
 
-        if not os.path.exists(config_path):
+        if not os.path.exists(summary_path):
             print(f'Skipping {hpo_exp_name} because summary does not exist yet')
             continue
 
-        curr_val_acc_diffs, curr_hp, curr_image = extract_data(config_path, logs_path)
+        curr_val_acc_diffs, curr_hp, curr_image_test, curr_image_train = extract_data(summary_path, logs_path)
 
         if len(curr_val_acc_diffs) != 100:
             print(f'Skipping {hpo_exp_name} because not finished yet (only {len(curr_val_acc_diffs)})')
             continue
 
-        if curr_image is None:
+        if curr_image_test is None:
             print(f'Skipping {hpo_exp_name} because image does not yet')
             continue
 
         val_acc_diffs.append(curr_val_acc_diffs)
         hps.append(curr_hp)
-        images.append(curr_image)
+        images.append(curr_image_test)
         finished_exps.append(hpo_exp_name)
 
     # print('val_acc_diffs', val_acc_diffs)
@@ -68,9 +66,8 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
             f.write(image)
 
 
-def extract_data(config_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[float], Dict, str]:
-    # TODO: we load summary and not config here. Use config after the bug is fixed
-    config = load_config(config_path).config
+def extract_data(summary_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[float], Dict, str]:
+    config = load_config(summary_path).config
     events_acc = EventAccumulator(logs_path)
     events_acc.Reload()
 
@@ -78,13 +75,14 @@ def extract_data(config_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[f
     hp = config.hp.to_dict()
     hp['n_conv_layers'] = len(config.hp.conv_model_config.conv_sizes)
 
-    if 'Minimum' in events_acc.images.Keys():
-        image = events_acc.Images('Minimum')[0].encoded_image_string
+    if 'Minimum_test' in events_acc.images.Keys():
+        image_test = events_acc.Images('Minimum_test')[0].encoded_image_string
+        image_train = events_acc.Images('Minimum_train')[0].encoded_image_string
     else:
-        image = None
+        image_test = None
+        image_train = None
 
-    return val_acc_diffs, hp, image
-
+    return val_acc_diffs, hp, image_test, image_train
 
 
 def get_dir_children(dir:str) -> List[str]:
