@@ -128,7 +128,7 @@ class MaskModel(ModuleOperation):
 
     def load_state_dict(self, state_dict:OrderedDict):
         for k, v in state_dict.items():
-            self.register_param(k, v)
+            self.register_param(k, torch.Tensor(v))
 
     def register_param(self, param_name, param_value):
         setattr(self, param_name, nn.Parameter(param_value))
