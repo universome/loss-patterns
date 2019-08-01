@@ -91,7 +91,7 @@ class MaskTrainer(BaseTrainer):
                 n_input_channels=self.config.hp.get('n_input_channels', 1),
                 use_bn=self.config.hp.get('use_bn', True)).model
         elif self.config.model_name == "simple":
-            self.torch_model_builder = SimpleModel
+            self.torch_model_builder = lambda: SimpleModel().nn
         elif self.config.model_name == "conv":
             self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config).nn
         else:
@@ -231,32 +231,33 @@ class MaskTrainer(BaseTrainer):
 
     def visualize_minimum(self, dataloader:DataLoader, subtitle:str):
         xs, ys, scores = self.compute_mask_scores(dataloader)
+        self.save_minima_grid(scores, subtitle)
         fig = self.build_minimum_figure(xs, ys, scores, subtitle)
         self.writer.add_figure(f'Minimum_{subtitle}', fig, self.num_iters_done)
-        self.save_minima_grid(scores, subtitle)
 
     def build_minimum_figure(self, xs, ys, scores, subtitle:str):
         X, Y = np.meshgrid(xs, ys)
+        scores = np.array(scores)
 
         fig = plt.figure(figsize=(20, 4))
 
         plt.subplot(141)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
+        cntr = plt.contourf(X, Y, scores[:,:,0].T, cmap="RdBu_r", levels=np.linspace(0.3, 2.5, 30))
         plt.title(f'Loss [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(142)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
+        cntr = plt.contourf(X, Y, scores[:,:,1].T, cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
         plt.title(f'Accfuracy [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(143)
-        cntr = plt.contourf(X, Y, [[s[0] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=100)
+        cntr = plt.contourf(X, Y, scores[:,:,0].T, cmap="RdBu_r", levels=100)
         plt.title(f'Loss [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(144)
-        cntr = plt.contourf(X, Y, [[s[1] for s in s_row] for s_row in scores], cmap="RdBu_r", levels=np.linspace(0, 1, 100))
+        cntr = plt.contourf(X, Y, scores[:,:,1].T, cmap="RdBu_r", levels=np.linspace(0, 1, 100))
         plt.title(f'Accfuracy [{subtitle}]')
         plt.colorbar(cntr)
 
