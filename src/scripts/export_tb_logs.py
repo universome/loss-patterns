@@ -27,7 +27,7 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
 
         # if i > 1: break
 
-        summary_path = os.path.join(summarys_dir, f'{hpo_exp_name}.yml')
+        summary_path = os.path.join(summaries_dir, f'{hpo_exp_name}.yml')
         logs_path = get_dir_children(os.path.join(logs_dir, hpo_exp_name))[0]
 
         if not os.path.exists(summary_path):
