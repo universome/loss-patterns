@@ -220,7 +220,7 @@ class MaskTrainer(BaseTrainer):
 
         dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
         scores = [[self.compute_mask_score(x, y, dummy_model, dataloader) for y in ys] for x in xs]
-        self.logger.info(f'Scoring took {time.time() - start}')
+        # self.logger.info(f'Scoring took {time.time() - start}')
 
         return xs, ys, scores
 

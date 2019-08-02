@@ -36,13 +36,15 @@ hp:
   parametrization_type: "up_orthogonal"
   lr: 0.0003
 hpo:
-  num_parallel_experiments_per_gpu: 4
+  num_parallel_experiments_per_gpu: 1
   scheme: "grid-search"
   grid:
     fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     _seeds: [1, 2, 3, 4, 5]
+    # _seeds: [1, 2, 3]
+    # fill_prob: [0.2, 0.5, 0.8]
     conv_model_config: [
-      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128]},
-      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true},
-      {conv_sizes: [1, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_skip_connection: true},
+      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128]},
+      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true},
+      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_skip_connection: true},
     ]

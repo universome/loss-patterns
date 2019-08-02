@@ -71,7 +71,7 @@ class ConvBlock(nn.Module):
             nn.Conv2d(in_size, out_size, kernel_size=3, padding=1),
             ReparametrizedBatchNorm2d(out_size) if use_bn else Noop(),
             activation(),
-            Noop() if self.is_residual else nn.MaxPool2d(2, 2)
+            # Noop() if self.is_residual else nn.MaxPool2d(2, 2)
         )
 
     def forward(self, x):
