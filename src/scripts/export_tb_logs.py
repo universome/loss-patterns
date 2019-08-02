@@ -11,9 +11,10 @@ from firelab.utils.fs_utils import load_config, clean_dir
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 
-def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
-    logs_dir = os.path.join(experiment_dir, 'logs')
-    summaries_dir = os.path.join(experiment_dir, 'summaries')
+def main(exp_name:str, output_dir:os.PathLike):
+    logs_dir = f'experiments/{exp_name}/logs'
+    summaries_dir = f'experiments/{exp_name}/summaries'
+    output_exp_dir = os.path.join(output_dir, exp_name)
 
     hpo_exp_names = sorted([exp for exp in os.listdir(logs_dir)])
     hps = []
@@ -56,13 +57,13 @@ def main(experiment_dir:os.PathLike, output_dir:os.PathLike):
     val_acc_diffs = pd.DataFrame.from_dict({exp: values for exp, values in zip(finished_exps, val_acc_diffs)})
     hps = pd.DataFrame(data=hps, index=finished_exps)
 
-    clean_dir(output_dir, create=True)
-    val_acc_diffs.to_csv(os.path.join(output_dir, 'val_acc_diffs.csv'))
-    hps.to_csv(os.path.join(output_dir, 'hps.csv'))
+    clean_dir(output_exp_dir, create=True)
+    val_acc_diffs.to_csv(os.path.join(output_exp_dir, 'val_acc_diffs.csv'))
+    hps.to_csv(os.path.join(output_exp_dir, 'hps.csv'))
 
-    os.mkdir(os.path.join(output_dir, 'images'))
+    os.mkdir(os.path.join(output_exp_dir, 'images'))
     for exp_name, image in zip(finished_exps, images):
-        with open(os.path.join(output_dir, 'images', f'{exp_name}.png'), 'wb') as f:
+        with open(os.path.join(output_exp_dir, 'images', f'{exp_name}.png'), 'wb') as f:
             f.write(image)
 
 
@@ -91,11 +92,11 @@ def get_dir_children(dir:str) -> List[str]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Expoert tensorboard experimentcsv')
-    parser.add_argument('-e', '--experiment_dir', type=str, required=True, metavar='experiment_dir',
-        help='Path to experiment directory (for example, "experiments/super-experiment-00017/experiment"')
-    parser.add_argument('-o', '--output_dir', type=str, required=True, metavar='output_dir',
-        help='Path to directory where to save the results')
+    parser.add_argument('-e', '--experiment_name', type=str, required=True, metavar='experiment_name',
+        help='Experiment name which will be looked up in `experiments` directory (for example, "super-experiment-00017"')
+    parser.add_argument('-o', '--output_dir', type=str, default='logs_export', metavar='output_dir',
+        help='Path to a directory where the results will be saved')
 
     args = parser.parse_args()
 
-    main(args.experiment_dir, args.output_dir)
+    main(args.experiment_name, args.output_dir)
