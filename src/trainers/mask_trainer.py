@@ -210,8 +210,6 @@ class MaskTrainer(BaseTrainer):
         self.writer.close()
 
     def compute_mask_scores(self, dataloader):
-        start = time.time()
-
         pad = self.config.get('solution_vis.padding', 0)
         x_num_points = self.config.get('solution_vis.granularity.x', self.mask.shape[0] + 2 * pad)
         y_num_points = self.config.get('solution_vis.granularity.y', self.mask.shape[1] + 2 * pad)
@@ -220,7 +218,6 @@ class MaskTrainer(BaseTrainer):
 
         dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
         scores = [[self.compute_mask_score(x, y, dummy_model, dataloader) for y in ys] for x in xs]
-        # self.logger.info(f'Scoring took {time.time() - start}')
 
         return xs, ys, scores
 
@@ -248,7 +245,7 @@ class MaskTrainer(BaseTrainer):
 
         plt.subplot(142)
         cntr = plt.contourf(X, Y, scores[:,:,1].T, cmap="RdBu_r", levels=np.linspace(0.5, 0.9, 30))
-        plt.title(f'Accfuracy [{subtitle}]')
+        plt.title(f'Accuracy [{subtitle}]')
         plt.colorbar(cntr)
 
         plt.subplot(143)
@@ -258,7 +255,7 @@ class MaskTrainer(BaseTrainer):
 
         plt.subplot(144)
         cntr = plt.contourf(X, Y, scores[:,:,1].T, cmap="RdBu_r", levels=np.linspace(0, 1, 100))
-        plt.title(f'Accfuracy [{subtitle}]')
+        plt.title(f'Accuracy [{subtitle}]')
         plt.colorbar(cntr)
 
         return fig

@@ -1,0 +1,62 @@
+title: "Trying to fit a masked minimum on CIFAR10"
+trainer: "MaskTrainer"
+random_seed: 42
+data_dir: "data"
+model_name: "conv"
+mask_type: "icon"
+modules:
+  models: ["model"]
+  optims: ["optim"]
+logging:
+  training_progress: True
+good_and_bad_val_acc_diff_threshold: 0.01
+diff_threshold_num_warmup_epochs: 50
+val_freq_epochs: 1
+max_num_epochs: 100
+checkpoint:
+  freq_epochs: 100
+
+hp:
+  should_resize_icon: true
+  target_icon_size: [50, 50]
+
+  should_center_origin: true
+  norm_l2_coef: 1.
+  ort_l2_coef: 10.
+  batch_size: 256
+  dataset: "CIFAR10"
+  num_input_channels: 3
+  optim: "adam"
+  num_good_cells_per_update: 50
+  num_bad_cells_per_update: 50
+  parametrization_type: "up_orthogonal"
+  negative_loss_coef: 1.
+  neg_loss_clip_threshold: 2.5
+  grad_clip_threshold: 100
+  conv_model_config:
+    conv_sizes: [3, 16, 32, 64]
+    dense_sizes: [1024, 128]
+    use_bn: false
+
+hpo:
+  num_parallel_experiments_per_gpu: 5
+  scheme: "grid-search"
+  grid:
+    lr: [0.001, 0.00025, 0.0001, 0.00005]
+    icon_file_path: [
+      "new-icons/animal.png",
+      "new-icons/boat (1).png",
+      "new-icons/boat.png",
+      "new-icons/fire.png",
+      "new-icons/linux.png",
+      "new-icons/pizza.png",
+      "new-icons/saturn.png"
+    ]
+
+# For debug purposes
+# max_num_iters: 1
+# solution_vis:
+#   granularity:
+#     x: 5
+#     y: 3
+#   padding: 1
