@@ -1,0 +1,6 @@
+firelab~=0.0.8.2
+torch~=1.2.0
+torchvision~=0.4.0
+matplotlib~=3.1.1
+tqdm~=4.33.0
+scikit-image~=0.15.0
