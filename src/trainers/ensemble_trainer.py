@@ -103,18 +103,27 @@ class EnsembleTrainer(BaseTrainer):
         self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
 
     def validate(self):
-        guessed = np.array([])
-        losses = np.array([])
+        individual_guessed = []
+        individual_losses = []
+        ensemble_guessed = []
+        ensemble_losses = []
 
         self.model.eval()
 
         with torch.no_grad():
             for x, y in self.val_dataloader:
                 x, y = x.to(self.device_name), y.to(self.device_name)
-                preds = self.model(x)
-                loss = self.criterion(preds, y)
-                losses = np.hstack([losses, loss.cpu().numpy()])
-                guessed = np.hstack([guessed, (preds.argmax(dim=1) == y).long().cpu().numpy()])
+                individual_preds = torch.stack([self.model.run_model_by_id(i, x) for i in range(self.model.coords.size(0))])
+                ensemble_preds = individual_preds.mean(dim=0)
 
-        self.writer.add_scalar('Val/loss', losses.mean(), self.num_epochs_done)
-        self.writer.add_scalar('Val/acc', guessed.mean(), self.num_epochs_done)
+                individual_losses.extend([self.criterion(p, y).cpu().mean().item() for p in individual_preds])
+                ensemble_losses.append(self.criterion(ensemble_preds, y).cpu().mean().item())
+                individual_guessed.extend([g for p in individual_preds for g in (p.argmax(dim=1) == y).cpu().numpy()])
+                ensemble_guessed.extend([g for g in (ensemble_preds.argmax(dim=1) == y).cpu().numpy()])
+
+        self.writer.add_scalar('Val/loss_diff', np.mean(ensemble_losses) - np.mean(individual_losses), self.num_epochs_done)
+        self.writer.add_scalar('Val/acc_diff', np.mean(ensemble_guessed) - np.mean(individual_guessed), self.num_epochs_done)
+        self.writer.add_scalar('Val/individual_mean_loss', np.mean(individual_losses), self.num_epochs_done)
+        self.writer.add_scalar('Val/individual_mean_acc', np.mean(individual_guessed), self.num_epochs_done)
+        self.writer.add_scalar('Val/ensemble_loss', np.mean(ensemble_losses), self.num_epochs_done)
+        self.writer.add_scalar('Val/ensemble_acc', np.mean(ensemble_guessed), self.num_epochs_done)
