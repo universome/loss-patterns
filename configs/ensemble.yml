@@ -1,0 +1,25 @@
+title: "Trying to fit an ensemble with MPO"
+trainer: "EnsembleTrainer"
+random_seed: 42
+data_dir: "data"
+model_name: "conv"
+modules:
+  models: ["model"]
+  optims: ["optim"]
+val_freq_epochs: 1
+max_num_epochs: 100
+checkpoint:
+  freq_epochs: 10
+hp:
+  batch_size: 512
+  optim: "adam"
+  grad_clip_threshold: 100
+  coords_init_strategy: "standard_uniform"
+  conv_model_config:
+    conv_sizes: [1, 8, 32, 64]
+    dense_sizes: [1024, 128]
+    use_bn: false
+    use_maxpool: true
+  lr: 0.001
+  num_models: 10
+  num_models_per_update: 10

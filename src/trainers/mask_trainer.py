@@ -33,7 +33,7 @@ class MaskTrainer(BaseTrainer):
 
     def init_mask(self):
         if self.config.mask_type == 'icon':
-            project_path = self.config.firelab.project_path
+            project_path = self.config.firelab.paths.project_path
             data_dir = os.path.join(project_path, self.config.data_dir)
             icon = imread(os.path.join(data_dir, self.config.hp.icon_file_path))
             if self.config.hp.get('should_resize_icon', False):
@@ -58,7 +58,7 @@ class MaskTrainer(BaseTrainer):
     def init_dataloaders(self):
         dataset = self.config.hp.get('dataset', 'FashionMNIST')
         batch_size = self.config.hp.batch_size
-        project_path = self.config.firelab.project_path
+        project_path = self.config.firelab.paths.project_path
         data_dir = os.path.join(project_path, self.config.data_dir)
 
         if dataset == 'FashionMNIST':
@@ -86,6 +86,16 @@ class MaskTrainer(BaseTrainer):
         self.vis_test_dataloader = DataLoader(data_vis_test, batch_size=batch_size, shuffle=False)
 
     def init_models(self):
+        self.model = MaskModel(
+            self.mask, self.torch_model_builder,
+            should_center_origin=self.config.hp.should_center_origin,
+            parametrization_type=self.config.hp.parametrization_type)
+        self.model = self.model.to(self.device_name)
+
+        # self.logger.info(f'Model initial orthogonality: {self.model.compute_ort_reg()}')
+        # self.logger.info(f'Model params: {self.config.hp.conv_model_config.to_dict()}. Parametrization: {self.config.hp.parametrization_type}')
+
+    def init_torch_model_builder(self):
         if self.config.model_name == "vgg":
             self.torch_model_builder = lambda: VGG11(
                 n_input_channels=self.config.hp.get('n_input_channels', 1),
@@ -96,15 +106,6 @@ class MaskTrainer(BaseTrainer):
             self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config).nn
         else:
             raise NotImplementedError("Model %s is not supported" % self.config.model_name)
-
-        self.model = MaskModel(
-            self.mask, self.torch_model_builder,
-            should_center_origin=self.config.hp.should_center_origin,
-            parametrization_type=self.config.hp.parametrization_type)
-        self.model = self.model.to(self.config.firelab.device_name)
-
-        # self.logger.info(f'Model initial orthogonality: {self.model.compute_ort_reg()}')
-        # self.logger.info(f'Model params: {self.config.hp.conv_model_config.to_dict()}. Parametrization: {self.config.hp.parametrization_type}')
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
@@ -122,8 +123,8 @@ class MaskTrainer(BaseTrainer):
     def train_on_batch(self, batch):
         self.optim.zero_grad()
 
-        x = batch[0].to(self.config.firelab.device_name)
-        y = batch[1].to(self.config.firelab.device_name)
+        x = batch[0].to(self.device_name)
+        y = batch[1].to(self.device_name)
 
         good_losses = []
         good_accs = []
@@ -206,7 +207,7 @@ class MaskTrainer(BaseTrainer):
             self.visualize_minimum(self.vis_test_dataloader, 'test')
 
     def delete_logs(self):
-        shutil.rmtree(self.config.firelab.logs_path)
+        shutil.rmtree(self.config.firelab.paths.logs_path)
         self.writer.close()
 
     def compute_mask_scores(self, dataloader):
@@ -216,7 +217,7 @@ class MaskTrainer(BaseTrainer):
         xs = np.linspace(-pad, self.mask.shape[0] + pad, x_num_points)
         ys = np.linspace(-pad, self.mask.shape[1] + pad, y_num_points)
 
-        dummy_model = self.torch_model_builder().to(self.config.firelab.device_name)
+        dummy_model = self.torch_model_builder().to(self.device_name)
         scores = [[self.compute_mask_score(x, y, dummy_model, dataloader) for y in ys] for x in xs]
 
         return xs, ys, scores
@@ -297,7 +298,7 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_figure('Mask', fig, self.num_iters_done)
 
     def save_mask(self):
-        save_path = os.path.join(self.config.firelab.custom_data_path, 'mask.npy')
+        save_path = os.path.join(self.config.firelab.paths.custom_data_path, 'mask.npy')
         np.save(save_path, self.mask)
 
     def plot_params_histograms(self, w, subtag:str):
@@ -321,7 +322,7 @@ class MaskTrainer(BaseTrainer):
         self.writer.add_text('Config', config_yml, self.num_iters_done)
 
     def save_minima_grid(self, scores, subtitle:str):
-        save_path = os.path.join(self.config.firelab.custom_data_path, f'minima_grid_{subtitle}.npy')
+        save_path = os.path.join(self.config.firelab.paths.custom_data_path, f'minima_grid_{subtitle}.npy')
         np.save(save_path, scores)
 
 
