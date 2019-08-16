@@ -62,20 +62,18 @@ class EnsembleTrainer(BaseTrainer):
 
         for i in random.sample(point_coords, num_models):
             preds = self.model.run_model_by_id(i, x)
-
             loss = self.criterion(preds, y).mean()
-            loss /= num_models
-            loss.backward() # To make current graph free
 
-            point_losses.append(loss.item())
+            point_losses.append(loss)
             point_accs.append((preds.argmax(dim=1) == y).float().mean().item())
             point_preds.append(preds)
 
-        point_accs = np.array(point_accs)
+        total_loss = torch.stack(point_losses).mean()
+        total_loss.backward(retain_graph=True)
 
-        self.writer.add_scalar('Train/loss/mean', np.mean(point_losses), self.num_iters_done)
-        self.writer.add_scalar('Train/loss/max', np.max(point_losses), self.num_iters_done)
-        self.writer.add_scalar('Train/loss/min', np.min(point_losses), self.num_iters_done)
+        self.writer.add_scalar('Train/loss/mean', torch.stack(point_losses).mean().item(), self.num_iters_done)
+        self.writer.add_scalar('Train/loss/max', torch.stack(point_losses).max().item(), self.num_iters_done)
+        self.writer.add_scalar('Train/loss/min', torch.stack(point_losses).min().item(), self.num_iters_done)
 
         self.writer.add_scalar('Train/acc/mean', np.mean(point_accs), self.num_iters_done)
         self.writer.add_scalar('Train/acc/max', np.max(point_accs), self.num_iters_done)
@@ -87,6 +85,10 @@ class EnsembleTrainer(BaseTrainer):
         # - adversarial loss to guess from which model prediction has came
         # - just make weights farther from each other
         # - correlation/MSE for losses between models (yes, it will be differentiable)
+        decorrelation_loss = self.compute_decorrelation(point_preds, y)
+        self.writer.add_scalar('Train/decorrelation', decorrelation_loss.item(), self.num_iters_done)
+        decorrelation_loss *= self.config.hp.get('decorrelation_coef', 1.)
+        decorrelation_loss.backward()
 
         self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
@@ -101,6 +103,19 @@ class EnsembleTrainer(BaseTrainer):
         self.writer.add_scalar('Stats/norms/origin_param', self.model.origin_param.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/norms/right_param', self.model.right_param.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
+
+    def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
+        "Computes decorrelation regularization based on predictions"
+        if self.config.hp.decorrelation_type == 'preds_distance':
+            wrong_cls_mask = torch.ones_like(preds[0]).bool()
+            wrong_cls_mask[torch.arange(preds[0].size(0)), target] = False
+            wrong_cls_preds = torch.stack([p[wrong_cls_mask] for p in preds])
+            decorrelation_loss = torch.stack(
+                [(wrong_cls_preds[i] - wrong_cls_preds[j]).pow(2).sum() for i in range(10) for j in range(i)]).mean()
+        else:
+            raise NotImplementedError
+
+        return decorrelation_loss
 
     def validate(self):
         individual_guessed = []
