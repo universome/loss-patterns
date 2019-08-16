@@ -16,7 +16,7 @@ hp:
   grad_clip_threshold: 100
   coords_init_strategy: "standard_uniform"
   dataset: "FashionMNIST"
-  decorrelation_type: "preds_distance"
+  decorrelation_type: "weights_distance"
   decorrelation_coef: 0.01
   conv_model_config:
     conv_sizes: [1, 8, 32, 64]

@@ -110,8 +110,18 @@ class EnsembleTrainer(BaseTrainer):
             wrong_cls_mask = torch.ones_like(preds[0]).bool()
             wrong_cls_mask[torch.arange(preds[0].size(0)), target] = False
             wrong_cls_preds = torch.stack([p[wrong_cls_mask] for p in preds])
-            decorrelation_loss = torch.stack(
-                [(wrong_cls_preds[i] - wrong_cls_preds[j]).pow(2).sum() for i in range(10) for j in range(i)]).mean()
+            pairs = [(i,j) for i in range(10) for j in range(i)]
+            distances = [(wrong_cls_preds[p[0]] - wrong_cls_preds[p[1]]).pow(2).sum() for p in pairs]
+            decorrelation_loss = torch.stack(distances).mean()
+            decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
+            decorrelation_loss *= -1 # Because we want the distance to be larger
+        if self.config.hp.decorrelation_type == 'weights_distance':
+            ws = [self.model.get_model_weights_by_id(i) for i in range(self.model.coords.size(0))]
+            pairs = [(i,j) for i in range(10) for j in range(i)]
+            distances = [(ws[p[0]] - ws[p[1]]).pow(2).sum() for p in pairs]
+            decorrelation_loss = torch.stack(distances).mean()
+            decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
+            decorrelation_loss *= -1 # Because we want the distance to be larger
         else:
             raise NotImplementedError
 

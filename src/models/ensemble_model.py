@@ -32,12 +32,17 @@ class EnsembleModel(ModuleOperation):
         else:
             raise NotImplementedError
 
-    def get_model_by_id(self, i):
-        x, y = self.coords[i]
-        w = self.origin_param + x * self.right_param + y * self.up_param
+    def get_model_by_id(self, i:int):
+        w = self.get_model_weights_by_id(i)
         model_op = convert_sequential_model_to_op(w, self.dummy_model)
 
         return model_op
+
+    def get_model_weights_by_id(self, i:int):
+        x, y = self.coords[i]
+        w = self.origin_param + x * self.right_param + y * self.up_param
+
+        return w
 
     def run_model_by_id(self, i, x):
         return self.get_model_by_id(i)(x)
