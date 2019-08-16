@@ -14,6 +14,7 @@ class ConvModel(nn.Module):
         dense_sizes = config.get('dense_sizes', [576, 128])
         use_bn = config.get('use_bn', False)
         use_dropout = config.get('use_dropout', False)
+        use_maxpool = config.get('use_maxpool', False)
         use_skip_connection = config.get('use_skip_connection', False)
         activation = config.get('activation', 'relu')
 
@@ -28,21 +29,22 @@ class ConvModel(nn.Module):
         else:
             raise NotImplementedError(f'Unknown activation function: {activation}')
 
+        conv_body = nn.Sequential(*[
+            ConvBlock(conv_sizes[i], conv_sizes[i+1], use_bn, use_skip_connection, \
+                      use_maxpool, self.activation) for i in range(len(conv_sizes) - 1)])
+        dense_head = nn.Sequential(*[
+            self._create_dense_block(dense_sizes[i], dense_sizes[i+1], use_dropout) for i in range(len(dense_sizes) - 1)
+        ])
+
         self.nn = nn.Sequential(
-            *self._create_blocks(self._create_conv_block, conv_sizes, use_bn, use_dropout, use_skip_connection),
+            conv_body,
             nn.AdaptiveAvgPool2d((4, 4)),
             Flatten(),
-            *self._create_blocks(self._create_dense_block, dense_sizes, use_bn, use_dropout, use_skip_connection),
+            dense_head,
             nn.Linear(dense_sizes[-1], 10)
         )
 
-    def _create_blocks(self, block_builder, sizes, use_bn:bool, use_dropout:bool, use_skip_connection:bool) -> List[nn.Sequential]:
-        return [block_builder(sizes[i], sizes[i+1], use_bn, use_dropout, use_skip_connection) for i in range(len(sizes) - 1)]
-
-    def _create_conv_block(self, in_size:int, out_size:int, use_bn:bool, use_dropout:bool, use_skip_connection:bool):
-        return ConvBlock(in_size, out_size, use_bn, use_dropout, use_skip_connection, self.activation)
-
-    def _create_dense_block(self, in_size:int, out_size:int, use_bn:bool, use_dropout:bool, use_skip_connection:bool):
+    def _create_dense_block(self, in_size:int, out_size:int, use_dropout:bool):
         block = nn.Sequential()
         block.add_module('linear', nn.Linear(in_size, out_size))
         block.add_module('activation', self.activation())
@@ -60,8 +62,8 @@ class ConvBlock(nn.Module):
     def __init__(self, in_size:int,
                        out_size:int,
                        use_bn:bool,
-                       use_dropout:bool,
                        use_skip_connection:bool,
+                       use_maxpool:bool,
                        activation:nn.Module):
         super(ConvBlock, self).__init__()
 
@@ -71,7 +73,7 @@ class ConvBlock(nn.Module):
             nn.Conv2d(in_size, out_size, kernel_size=3, padding=1),
             ReparametrizedBatchNorm2d(out_size) if use_bn else Noop(),
             activation(),
-            # Noop() if self.is_residual else nn.MaxPool2d(2, 2)
+            Noop() if (self.is_residual or not use_maxpool) else nn.MaxPool2d(2, 2)
         )
 
     def forward(self, x):

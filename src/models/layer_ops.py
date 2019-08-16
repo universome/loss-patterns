@@ -1,4 +1,5 @@
 from typing import List
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -14,6 +15,7 @@ from src.models.conv_model import ConvBlock
 class ModuleOperation:
     def __init__(self):
         self.trainig = True
+        self._parameters = {}
 
     def train(self, is_enabled:bool=True):
         self.training = is_enabled
@@ -29,9 +31,32 @@ class ModuleOperation:
     def get_modules(self):
         return []
 
-    # def to(self, *args, **kwargs):
-    #     for name, p in self.named_params:
-    #         setattr(self, name, p.to(*args, **kwargs))
+    def forward(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
+
+    def to(self, *args, **kwargs):
+        for param_name, param_value in self._parameters.items():
+            self.register_param(param_name, param_value.to(*args, **kwargs))
+
+        return self
+
+    def parameters(self):
+        return [p for p in self._parameters.values()]
+
+    def state_dict(self):
+        return OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
+
+    def load_state_dict(self, state_dict:OrderedDict):
+        for k, v in state_dict.items():
+            self.register_param(k, torch.Tensor(v))
+
+    def register_param(self, param_name, param_value):
+        setattr(self, param_name, nn.Parameter(param_value))
+
+        self._parameters[param_name] = getattr(self, param_name)
 
 
 

@@ -1,6 +1,5 @@
 import random
 from typing import List, Tuple
-from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -17,13 +16,13 @@ class MaskModel(ModuleOperation):
         @params
             - should_center_origin: specifies, if our origin should be in the center of the mask
         """
+        super(MaskModel, self).__init__()
 
         self.mask = mask
         self.dummy_model = torch_model_cls()
         self.is_good_mode = True
         self.should_center_origin = should_center_origin
         self.parametrization_type = parametrization_type
-        self._parameters = {}
 
         self.register_param('origin_param', weight_vector(torch_model_cls().parameters()))
         self.register_param('right_param', weight_vector(torch_model_cls().parameters()))
@@ -64,7 +63,7 @@ class MaskModel(ModuleOperation):
     def scaling(self):
         return self.scaling_param
 
-    def __call__(self, x):
+    def forward(self, x):
         if self.is_good_mode:
             w = self.sample_class_weight(1)
         else:
@@ -113,24 +112,3 @@ class MaskModel(ModuleOperation):
 
     def compute_norm_reg(self):
         return (self.up.norm() - self.right.norm()).abs()
-
-    def to(self, *args, **kwargs):
-        for param_name, param_value in self._parameters.items():
-            self.register_param(param_name, param_value.to(*args, **kwargs))
-
-        return self
-
-    def parameters(self):
-        return [p for p in self._parameters.values()]
-
-    def state_dict(self):
-        return OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
-
-    def load_state_dict(self, state_dict:OrderedDict):
-        for k, v in state_dict.items():
-            self.register_param(k, torch.Tensor(v))
-
-    def register_param(self, param_name, param_value):
-        setattr(self, param_name, nn.Parameter(param_value))
-
-        self._parameters[param_name] = getattr(self, param_name)
