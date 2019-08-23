@@ -12,7 +12,8 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 
 from src.models.ensemble import MappingEnsemble, PlaneEnsemble
-from .mask_trainer import MaskTrainer
+from src.utils import weight_vector
+from src.trainers.mask_trainer import MaskTrainer
 
 class EnsembleTrainer(BaseTrainer):
     def __init__(self, config):
@@ -93,18 +94,33 @@ class EnsembleTrainer(BaseTrainer):
             decorrelation_loss.backward()
 
         self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
 
+        self.log_weight_stats()
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
 
+    def log_weight_stats(self):
+        if self.config.hp.ensemble_type == 'plane':
+            # Weight l2 norms
+            self.writer.add_scalar('Stats/norms/origin_param', self.model.origin_param.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/norms/right_param', self.model.right_param.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
+
+            # Grad norms
+            self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
+        elif self.config.hp.ensemble_type == 'mapping':
+            mapping_weight_norm = weight_vector(self.model.mapping.parameters()).norm()
+            mapping_grad_norm = torch.cat([p.grad.view(-1) for p in self.model.mapping.parameters()]).norm()
+
+            self.writer.add_scalar('Stats/norms/mapping', mapping_weight_norm.item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/mapping', mapping_grad_norm.item(), self.num_iters_done)
+        else:
+            pass
+
         self.writer.add_histogram('Coords/x', self.model.coords[:,0].cpu().detach().numpy(), self.num_iters_done)
         self.writer.add_histogram('Coords/y', self.model.coords[:,1].cpu().detach().numpy(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/norms/origin_param', self.model.origin_param.norm().item(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/norms/right_param', self.model.right_param.norm().item(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
 
     def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
         "Computes decorrelation regularization based on predictions"

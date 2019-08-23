@@ -56,7 +56,7 @@ class ModuleOperation:
     def state_dict(self):
         result = OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
 
-        for module_name, module in self.modules.items():
+        for module_name, module in self._modules.items():
             result[f'module:{module_name}'] = module.state_dict()
 
         return result
