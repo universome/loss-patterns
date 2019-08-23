@@ -86,9 +86,11 @@ class EnsembleTrainer(BaseTrainer):
         # - just make weights farther from each other
         # - correlation/MSE for losses between models (yes, it will be differentiable)
         decorrelation_loss = self.compute_decorrelation(point_preds, y)
-        self.writer.add_scalar('Train/decorrelation', decorrelation_loss.item(), self.num_iters_done)
-        decorrelation_loss *= self.config.hp.get('decorrelation_coef', 1.)
-        decorrelation_loss.backward()
+
+        if not decorrelation_loss is None:
+            self.writer.add_scalar('Train/decorrelation', decorrelation_loss.item(), self.num_iters_done)
+            decorrelation_loss *= self.config.hp.get('decorrelation_coef', 1.)
+            decorrelation_loss.backward()
 
         self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
         self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
@@ -115,13 +117,15 @@ class EnsembleTrainer(BaseTrainer):
             decorrelation_loss = torch.stack(distances).mean()
             decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
             decorrelation_loss *= -1 # Because we want the distance to be larger
-        if self.config.hp.decorrelation_type == 'weights_distance':
+        elif self.config.hp.decorrelation_type == 'weights_distance':
             ws = [self.model.get_model_weights_by_id(i) for i in range(self.model.coords.size(0))]
             pairs = [(i,j) for i in range(10) for j in range(i)]
             distances = [(ws[p[0]] - ws[p[1]]).pow(2).sum() for p in pairs]
             decorrelation_loss = torch.stack(distances).mean()
             decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
             decorrelation_loss *= -1 # Because we want the distance to be larger
+        elif self.config.hp.decorrelation_type == 'none':
+            decorrelation_loss = None
         else:
             raise NotImplementedError
 
