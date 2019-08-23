@@ -16,6 +16,7 @@ class ModuleOperation:
     def __init__(self):
         self.trainig = True
         self._parameters = {}
+        self._modules = {}
 
     def train(self, is_enabled:bool=True):
         self.training = is_enabled
@@ -41,22 +42,41 @@ class ModuleOperation:
         for param_name, param_value in self._parameters.items():
             self.register_param(param_name, param_value.to(*args, **kwargs))
 
+        for module in self._modules.values():
+            module.to(*args, **kwargs)
+
         return self
 
     def parameters(self):
-        return [p for p in self._parameters.values()]
+        own_params = [p for p in self._parameters.values()]
+        module_params = [p for m in self._modules.values() for p in m.parameters()]
+
+        return own_params + module_params
 
     def state_dict(self):
-        return OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
+        result = OrderedDict([(k, v.data.cpu().numpy()) for k, v in self._parameters.items()])
+
+        for module_name, module in self.modules.items():
+            result[f'module:{module_name}'] = module.state_dict()
+
+        return result
 
     def load_state_dict(self, state_dict:OrderedDict):
         for k, v in state_dict.items():
-            self.register_param(k, torch.Tensor(v))
+            if k.startswith('module:'):
+                module_name = k[7:]
+                module = getattr(self, module_name)
+                module.load_state_dict(v)
+            else:
+                self.register_param(k, torch.Tensor(v))
 
     def register_param(self, param_name, param_value):
         setattr(self, param_name, nn.Parameter(param_value))
-
         self._parameters[param_name] = getattr(self, param_name)
+
+    def register_module(self, name, module):
+        setattr(self, name, module)
+        self._modules[name] = getattr(self, name)
 
 
 
@@ -77,27 +97,27 @@ class SequentialOp(ModuleOperation):
 
 
 class Conv2dOp(ModuleOperation):
-    def __init__(self, weights, bias=None, stride:int=1, padding:int=0):
+    def __init__(self, weight, bias=None, stride:int=1, padding:int=0):
         super(Conv2dOp, self).__init__()
 
-        self.weights = weights
+        self.weight = weight
         self.bias = bias
         self.stride = stride
         self.padding = padding
 
     def __call__(self, X):
-        return F.conv2d(X, self.weights, bias=self.bias, stride=self.stride, padding=self.padding)
+        return F.conv2d(X, self.weight, bias=self.bias, stride=self.stride, padding=self.padding)
 
 
 class LinearOp(ModuleOperation):
-    def __init__(self, weights, bias=None):
+    def __init__(self, weight, bias=None):
         super(LinearOp, self).__init__()
 
-        self.weights = weights
+        self.weight = weight
         self.bias = bias
 
     def __call__(self, X):
-        return F.linear(X, self.weights, self.bias)
+        return F.linear(X, self.weight, self.bias)
 
 
 class MaxPool2dOp(ModuleOperation):

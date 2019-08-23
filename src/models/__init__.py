@@ -4,7 +4,7 @@ from .line_model import LineModel
 from .vgg import VGG11
 from .elbow_model import ElbowModel
 from .conv_model import ConvModel
-from .ensemble_model import EnsembleModel
+from .ensemble import PlaneEnsemble
 
 
 __all__ = [
@@ -14,5 +14,5 @@ __all__ = [
     "SimpleModelOperation",
     "VGG11",
     "ConvModel",
-    "EnsembleModel"
+    "PlaneEnsemble"
 ]

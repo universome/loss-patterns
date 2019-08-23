@@ -8,20 +8,10 @@ from typing import List, Tuple, Dict
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.optim import Adam, SGD
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
-from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
-from torchvision import transforms
-from torch.utils.data import DataLoader, Subset
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from skimage.transform import resize
-from skimage.io import imread
 
-from src.models import EnsembleModel, ConvModel
-from src.models.vgg import VGG11
-from src.utils import validate, validate_weights, weight_to_param, param_sizes
+from src.models.ensemble import MappingEnsemble, PlaneEnsemble
 from .mask_trainer import MaskTrainer
 
 class EnsembleTrainer(BaseTrainer):
@@ -31,11 +21,21 @@ class EnsembleTrainer(BaseTrainer):
     def init_models(self):
         MaskTrainer.init_torch_model_builder(self)
 
-        self.model = EnsembleModel(
-            self.torch_model_builder,
-            self.config.hp.num_models,
-            self.config.hp.coords_init_strategy
-        )
+        if self.config.hp.ensemble_type == 'plane':
+            self.model = PlaneEnsemble(
+                self.torch_model_builder,
+                self.config.hp.num_models,
+                self.config.hp.coords_init_strategy
+            )
+        elif self.config.hp.ensemble_type == 'mapping':
+            self.model = MappingEnsemble(
+                self.torch_model_builder,
+                self.config.hp.num_models,
+                self.config.hp.ensemble_config
+            )
+        else:
+            raise NotImplementedError(f'Unknown ensemble type: {self.config.hp.ensemble_type}')
+
         self.model = self.model.to(self.device_name)
 
     def init_dataloaders(self):
@@ -93,18 +93,18 @@ class EnsembleTrainer(BaseTrainer):
             decorrelation_loss.backward()
 
         self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
-        self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
-        self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
-        self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
 
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
 
         self.writer.add_histogram('Coords/x', self.model.coords[:,0].cpu().detach().numpy(), self.num_iters_done)
         self.writer.add_histogram('Coords/y', self.model.coords[:,1].cpu().detach().numpy(), self.num_iters_done)
-        self.writer.add_scalar('Stats/norms/origin_param', self.model.origin_param.norm().item(), self.num_iters_done)
-        self.writer.add_scalar('Stats/norms/right_param', self.model.right_param.norm().item(), self.num_iters_done)
-        self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/norms/origin_param', self.model.origin_param.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/norms/right_param', self.model.right_param.norm().item(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/norms/up_param', self.model.up_param.norm().item(), self.num_iters_done)
 
     def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
         "Computes decorrelation regularization based on predictions"
