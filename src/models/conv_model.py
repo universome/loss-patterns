@@ -17,6 +17,7 @@ class ConvModel(nn.Module):
         use_maxpool = config.get('use_maxpool', False)
         use_skip_connection = config.get('use_skip_connection', False)
         activation = config.get('activation', 'relu')
+        adaptive_pool_size = config.get('adaptive_pool_size', (4, 4))
 
         if activation == 'relu':
             self.activation = lambda: nn.ReLU(inplace=True)
@@ -38,7 +39,7 @@ class ConvModel(nn.Module):
 
         self.nn = nn.Sequential(
             conv_body,
-            nn.AdaptiveAvgPool2d((4, 4)),
+            nn.AdaptiveAvgPool2d(adaptive_pool_size),
             Flatten(),
             dense_head,
             nn.Linear(dense_sizes[-1], 10)
