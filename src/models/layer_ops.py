@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.model_zoo.layers import Flatten, Noop
+from src.model_zoo.layers import Flatten, Noop, Add
 from src.utils import weight_to_param, param_sizes
 
 from src.models.layers import ReparametrizedBatchNorm2d
@@ -121,14 +121,16 @@ class LinearOp(ModuleOperation):
 
 
 class MaxPool2dOp(ModuleOperation):
-    def __init__(self, kernel_size:int, stride:int):
+    def __init__(self, kernel_size:int, stride:int, padding:int, dilation:int):
         super(MaxPool2dOp, self).__init__()
 
         self.kernel_size = kernel_size
         self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
 
     def __call__(self, X):
-        return F.max_pool2d(X, self.kernel_size, stride=self.stride)
+        return F.max_pool2d(X, self.kernel_size, stride=self.stride, dilation=self.dilation)
 
 
 class DropoutOp(ModuleOperation):
@@ -178,7 +180,7 @@ class ReparametrizedBatchNorm2dOp(ModuleOperation):
         dummy_var = torch.ones_like(self.weight)
 
         return F.batch_norm(x, dummy_mean, dummy_var,
-            weight=self.weight + 0.5, bias=self.bias, training=True)
+            weight=(self.weight + 0.5), bias=self.bias, training=True)
 
 
 class ResidualOp(ModuleOperation):
@@ -201,13 +203,14 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             ops.append(LinearOp(*params[:2]))
             params = params[2:]
         elif isinstance(module, nn.Conv2d):
-            ops.append(Conv2dOp(*params[:2], padding=module.padding[0], stride=module.stride[0]))
+            num_params = 1 if module.bias is None else 2
+            ops.append(Conv2dOp(*params[:num_params], padding=module.padding[0], stride=module.stride[0]))
+            params = params[num_params:]
+        elif isinstance(module, ReparametrizedBatchNorm2d):
+            ops.append(ReparametrizedBatchNorm2dOp(*params[:2]))
             params = params[2:]
         elif isinstance(module, nn.BatchNorm2d):
             ops.append(BatchNormOp(*params[:2]))
-            params = params[2:]
-        elif isinstance(module, ReparametrizedBatchNorm2d):
-            ops.append(ReparametrizedBatchNorm2dOp(*params[:2]))
             params = params[2:]
         elif isinstance(module, nn.ReLU):
             ops.append(nn.ReLU(inplace=True))
@@ -220,7 +223,7 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
         elif isinstance(module, nn.Dropout):
             ops.append(nn.Dropout(module.p))
         elif isinstance(module, nn.MaxPool2d):
-            ops.append(nn.MaxPool2d(module.kernel_size, module.stride))
+            ops.append(nn.MaxPool2d(module.kernel_size, module.stride, module.padding, module.dilation))
         elif isinstance(module, Flatten):
             ops.append(Flatten())
         elif isinstance(module, nn.AdaptiveAvgPool2d):
@@ -241,6 +244,23 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
                 ops.append(ResidualOp(block_op))
             else:
                 ops.append(block_op)
+
+            params = params[num_params_in_module:]
+        elif isinstance(module, Add):
+            num_params_in_transform_a:int = len(list(module.transform_a.parameters()))
+            num_params_in_transform_b:int = len(list(module.transform_b.parameters()))
+            num_params_in_module = num_params_in_transform_a + num_params_in_transform_b
+
+            params_a = [p.view(-1) for p in params[:num_params_in_transform_a]]
+            params_b = [p.view(-1) for p in params[num_params_in_transform_a:num_params_in_module]]
+
+            transform_a_w = torch.cat(params_a) if len(params_a) > 0 else torch.empty(0)
+            transform_b_w = torch.cat(params_b) if len(params_b) > 0 else torch.empty(0)
+
+            transform_a_op = convert_sequential_model_to_op(transform_a_w, module.transform_a)
+            transform_b_op = convert_sequential_model_to_op(transform_b_w, module.transform_b)
+
+            ops.append(Add(transform_a_op, transform_b_op))
 
             params = params[num_params_in_module:]
         else:
