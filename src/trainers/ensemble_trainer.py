@@ -15,6 +15,7 @@ from src.models.ensemble import MappingEnsemble, PlaneEnsemble
 from src.utils import weight_vector
 from src.trainers.mask_trainer import MaskTrainer
 
+
 class EnsembleTrainer(BaseTrainer):
     def __init__(self, config):
         super(EnsembleTrainer, self).__init__(config)
@@ -98,6 +99,9 @@ class EnsembleTrainer(BaseTrainer):
         self.log_weight_stats()
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
+
+        self.scheduler.step()
+        self.writer.add_scalar('Stats/lr', self.scheduler.get_lr()[0], self.num_iters_done)
 
     def log_weight_stats(self):
         if self.config.hp.ensemble_type == 'plane':

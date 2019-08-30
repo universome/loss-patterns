@@ -28,12 +28,16 @@ def make_basic_block(in_planes, out_planes, stride=1, downsample=None):
         nn.ReLU(inplace=True)
     )
 
-class ResNet18(nn.Module):
-    def __init__(self, num_classes=1000):
-        super(ResNet18, self).__init__()
 
+class ResNet18(nn.Module):
+    def __init__(self, n_input_channels=3, n_classes=1000):
+        super(ResNet18, self).__init__()
+        self._construct_model(n_input_channels, n_classes)
+        self._init_weights()
+
+    def _construct_model(self, n_input_channels, n_classes):
         self.nn = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.Conv2d(n_input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False),
             ReparametrizedBatchNorm2d(64),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             nn.ReLU(inplace=True),
@@ -45,9 +49,10 @@ class ResNet18(nn.Module):
 
             nn.AdaptiveAvgPool2d((1, 1)),
             Flatten(),
-            nn.Linear(512, num_classes)
+            nn.Linear(512, n_classes)
         )
 
+    def _init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -71,3 +76,32 @@ class ResNet18(nn.Module):
 
     def forward(self, x):
         return self.nn(x)
+
+
+class FastResNet(ResNet18):
+    def _construct_model(self, n_input_channels, n_classes):
+        self.nn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 64, kernel_size=3, padding=1, bias=False),
+            ReparametrizedBatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(64, 128, kernel_size=3, padding=1, bias=False),
+            ReparametrizedBatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+
+            make_basic_block(128, 128),
+            make_basic_block(128, 128),
+
+            nn.Conv2d(128, 256, kernel_size=3, padding=1, bias=False),
+            ReparametrizedBatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+
+            make_basic_block(256, 256),
+            make_basic_block(256, 256),
+
+            nn.AdaptiveMaxPool2d((1, 1)),
+            Flatten(),
+            nn.Linear(256, n_classes)
+        )

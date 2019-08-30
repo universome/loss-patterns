@@ -228,6 +228,8 @@ def convert_sequential_model_to_op(weight, dummy_model) -> ModuleOperation:
             ops.append(Flatten())
         elif isinstance(module, nn.AdaptiveAvgPool2d):
             ops.append(nn.AdaptiveAvgPool2d(module.output_size))
+        elif isinstance(module, nn.AdaptiveMaxPool2d):
+            ops.append(nn.AdaptiveMaxPool2d(module.output_size))
         elif isinstance(module, Noop):
             ops.append(Noop())
         elif isinstance(module, nn.Sequential):

@@ -21,8 +21,10 @@ from skimage.io import imread
 import yaml
 
 from src.models import MaskModel, SimpleModel, ConvModel
+from src.models.resnet import FastResNet
 from src.models.vgg import VGG11
 from src.utils import validate, validate_weights, weight_to_param, param_sizes
+from src.optims.triangle_lr import TriangleLR
 
 
 class MaskTrainer(BaseTrainer):
@@ -96,7 +98,10 @@ class MaskTrainer(BaseTrainer):
         # self.logger.info(f'Model params: {self.config.hp.conv_model_config.to_dict()}. Parametrization: {self.config.hp.parametrization_type}')
 
     def init_torch_model_builder(self):
-        if self.config.model_name == "vgg":
+        if self.config.model_name == 'fast_resnet':
+            self.torch_model_builder = lambda: FastResNet(
+                n_classes=10, n_input_channels=self.config.hp.get('n_input_channels', 1)).nn
+        elif self.config.model_name == "vgg":
             self.torch_model_builder = lambda: VGG11(
                 n_input_channels=self.config.hp.get('n_input_channels', 1),
                 use_bn=self.config.hp.get('use_bn', True)).model
@@ -111,14 +116,18 @@ class MaskTrainer(BaseTrainer):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
 
     def init_optimizers(self):
-        optim_name = self.config.hp.get('optim', 'adam').lower()
+        optim_type = self.config.hp.get('optim.type', 'adam').lower()
 
-        if optim_name == 'adam':
+        if optim_type == 'adam':
             self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
-        elif optim_name == 'sgd':
-            self.optim = SGD(self.model.parameters(), lr=self.config.hp.lr, momentum=0.9)
+        elif optim_type == 'sgd':
+            self.optim = SGD(self.model.parameters(), **self.config.hp.optim.kwargs.to_dict())
+            # TODO: support other schedulers
+            assert self.config.hp.optim.scheduler.type == 'triangle_lr'
+            epoch_size = len(self.train_dataloader)
+            self.scheduler = TriangleLR(self.optim, epoch_size, **self.config.hp.optim.scheduler.kwargs.to_dict())
         else:
-            raise NotImplementedError(f'Unknown optimizer name: {optim_name}')
+            raise NotImplementedError(f'Unknown optimizer: {optim_type}')
 
     def train_on_batch(self, batch):
         self.optim.zero_grad()
