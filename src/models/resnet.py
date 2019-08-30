@@ -57,7 +57,7 @@ class ResNet18(nn.Module):
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, ReparametrizedBatchNorm2d):
-                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.weight, 0) # set to 0 because we use +1 in it
                 nn.init.constant_(m.bias, 0)
 
     def _make_layer(self, in_planes, out_planes, stride=1):

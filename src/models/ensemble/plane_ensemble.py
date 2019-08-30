@@ -15,7 +15,7 @@ class PlaneEnsemble(EnsembleBase):
     ])
 
     def __init__(self, torch_model_cls, num_models:int, coords_init_strategy:str='isotropic_normal'):
-        super(PlaneEnsemble, self).__init__()
+        super(PlaneEnsemble, self).__init__(torch_model_cls, num_models)
 
         assert coords_init_strategy in self.COORDS_INIT_STRATEGIES, \
             f"Unknown init strategy: {coords_init_strategy}"

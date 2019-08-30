@@ -12,19 +12,16 @@ checkpoint:
   freq_epochs: 10
 hp:
   n_input_channels: 3
-  ensemble_type: "mapping"
-  ensemble_config:
-    dense_sizes: [100, 3]
-    activation: "relu"
+  ensemble_type: "plane"
   batch_size: 512
   optim: "adam"
-  grad_clip_threshold: 100
+  grad_clip_threshold: 10
   coords_init_strategy: "standard_uniform"
   dataset: "CIFAR10"
   decorrelation_type: "none"
   decorrelation_coef: 0.01
-  num_models: 3
-  num_models_per_update: 3
+  num_models: 1
+  num_models_per_update: 1
 
   # Optimizer params
   optim:
@@ -33,10 +30,10 @@ hp:
       lr: 1 # Setting to 1 since we are using LR scheduler
       nesterov: true
       momentum: 0.9
-      weight_decay: 0.01
+      weight_decay: 0.05
     scheduler:
       type: "triangle_lr"
       kwargs:
-        knots: [0, 5, 40]
-        values: [0.0001, 0.4, 0.0001]
+        knots: [0, 5, 50]
+        values: [0.0001, 0.4, 0.001]
 

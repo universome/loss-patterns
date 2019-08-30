@@ -21,7 +21,7 @@ from skimage.io import imread
 import yaml
 
 from src.models import MaskModel, SimpleModel, ConvModel
-from src.models.resnet import FastResNet
+from src.models.resnet import FastResNet, ResNet18
 from src.models.vgg import VGG11
 from src.utils import validate, validate_weights, weight_to_param, param_sizes
 from src.optims.triangle_lr import TriangleLR
@@ -88,6 +88,7 @@ class MaskTrainer(BaseTrainer):
         self.vis_test_dataloader = DataLoader(data_vis_test, batch_size=batch_size, shuffle=False)
 
     def init_models(self):
+        self.init_torch_model_builder()
         self.model = MaskModel(
             self.mask, self.torch_model_builder,
             should_center_origin=self.config.hp.should_center_origin,
@@ -98,19 +99,22 @@ class MaskTrainer(BaseTrainer):
         # self.logger.info(f'Model params: {self.config.hp.conv_model_config.to_dict()}. Parametrization: {self.config.hp.parametrization_type}')
 
     def init_torch_model_builder(self):
-        if self.config.model_name == 'fast_resnet':
+        if self.config.hp.model_name == 'fast_resnet':
             self.torch_model_builder = lambda: FastResNet(
                 n_classes=10, n_input_channels=self.config.hp.get('n_input_channels', 1)).nn
-        elif self.config.model_name == "vgg":
+        if self.config.hp.model_name == 'resnet18':
+            self.torch_model_builder = lambda: ResNet18(
+                n_classes=10, n_input_channels=self.config.hp.get('n_input_channels', 1)).nn
+        elif self.config.hp.model_name == "vgg":
             self.torch_model_builder = lambda: VGG11(
                 n_input_channels=self.config.hp.get('n_input_channels', 1),
                 use_bn=self.config.hp.get('use_bn', True)).model
-        elif self.config.model_name == "simple":
+        elif self.config.hp.model_name == "simple":
             self.torch_model_builder = lambda: SimpleModel().nn
-        elif self.config.model_name == "conv":
+        elif self.config.hp.model_name == "conv":
             self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config).nn
         else:
-            raise NotImplementedError("Model %s is not supported" % self.config.model_name)
+            raise NotImplementedError("Model %s is not supported" % self.config.hp.model_name)
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
@@ -122,12 +126,16 @@ class MaskTrainer(BaseTrainer):
             self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
         elif optim_type == 'sgd':
             self.optim = SGD(self.model.parameters(), **self.config.hp.optim.kwargs.to_dict())
-            # TODO: support other schedulers
-            assert self.config.hp.optim.scheduler.type == 'triangle_lr'
+        else:
+            raise NotImplementedError(f'Unknown optimizer: {optim_type}')
+
+        if not self.config.hp.optim.has('scheduler'):
+            self.scheduler = None
+        elif self.config.hp.optim.get('scheduler.type') == 'triangle_lr':
             epoch_size = len(self.train_dataloader)
             self.scheduler = TriangleLR(self.optim, epoch_size, **self.config.hp.optim.scheduler.kwargs.to_dict())
         else:
-            raise NotImplementedError(f'Unknown optimizer: {optim_type}')
+            raise NotImplementedError(f"Unknown scheduler.type: {self.config.hp.optim.get('scheduler.type')}")
 
     def train_on_batch(self, batch):
         self.optim.zero_grad()
@@ -163,7 +171,7 @@ class MaskTrainer(BaseTrainer):
             bad_losses.append(bad_loss.item())
             bad_loss = bad_loss.clamp(0, self.config.hp.neg_loss_clip_threshold)
             bad_loss /= num_bad_points_to_use
-            bad_loss *= self.config.hp.negative_loss_coef
+            bad_loss *= self.config.hp.get('negative_loss_coef', 1.)
             bad_loss *= -1 # To make it grow
             bad_loss.backward() # To make the graph free
 
@@ -186,6 +194,9 @@ class MaskTrainer(BaseTrainer):
 
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
+
+        if not self.scheduler is None:
+            self.scheduler.step()
 
         self.writer.add_scalar('good/train/loss', good_losses.mean().item(), self.num_iters_done)
         self.writer.add_scalar('good/train/acc', good_accs.mean().item(), self.num_iters_done)

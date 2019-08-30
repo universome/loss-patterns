@@ -8,7 +8,7 @@ class ReparametrizedBatchNorm2d(nn.BatchNorm2d):
 
     def reset_parameters(self):
         super(ReparametrizedBatchNorm2d, self).reset_parameters()
-        self.weight.data.add_(-0.5) # So it has zero mean
+        nn.init.constant_(self.weight, 0) # Since we are doing +1 there
 
     def forward(self, x):
         self._check_input_dim(x)
@@ -32,6 +32,6 @@ class ReparametrizedBatchNorm2d(nn.BatchNorm2d):
                     exponential_average_factor = self.momentum
 
         return F.batch_norm(
-            x, self.running_mean, self.running_var, self.weight + 0.5, self.bias,
+            x, self.running_mean, self.running_var, self.weight + 1., self.bias,
             self.training or not self.track_running_stats,
             exponential_average_factor, self.eps)

@@ -2,56 +2,39 @@ title: "Trying to fit a masked minimum"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
-model_name: "conv"
 mask_type: "icon"
 modules:
   models: ["model"]
   optims: ["optim"]
 logging:
   training_progress: False
-max_num_epochs: 100
-# max_num_iters: 1
-# good_val_acc_stop_threshold: 0.2
-# bad_val_acc_stop_threshold: 0.9
+max_num_epochs: 300
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 30
-val_freq_epochs: 1
-solution_vis:
-  granularity:
-    x: 50
-    y: 50
-  padding: 5
-# solution_vis:
-#   granularity:
-#     x: 3
-#     y: 3
-#   padding: 1
+val_freq_epochs: 10
+
 hp:
-  # should_resize_icon: true
-  # target_icon_size: [50, 50]
-  # icon_file_path: "main-icons/start-up (1).png"
+  model_name: "resnet18"
   icon_file_path: "custom-icons/mona-lisa.png"
   should_center_origin: true
+
   norm_l2_coef: 1.
   ort_l2_coef: 10.
   batch_size: 512
-  optim: "adam"
+
+  num_good_cells_per_update: 10
+  num_bad_cells_per_update: 10
+  grad_clip_threshold: 10
+
+  optim:
+    type: "SGD"
+    kwargs: {lr: 1, nesterov: true, momentum: 0.9, weight_decay: 0.005}
+    scheduler:
+      type: "triangle_lr"
+      kwargs: {knots: [0, 5, 50], values: [0.0001, 0.4, 0.001]}
 hpo:
-  num_parallel_experiments_per_gpu: 3
-  scheme: "random-search"
-  num_experiments: 250
+  num_parallel_experiments_per_gpu: 1
+  scheme: "grid-search"
   grid:
-    negative_loss_coef: [0.5, 1., 5.]
     parametrization_type: ["simple", "up_orthogonal"]
-    num_good_cells_per_update: [25, 50, 100]
-    num_bad_cells_per_update: [25, 50, 100]
-    lr: [0.01, 0.005, 0.001, 0.0005, 0.00025, 0.0001, 0.00005]
-    neg_loss_clip_threshold: [0.5, 1., 2., 3., 4., 5.]
-    grad_clip_threshold: [1, 5, 10, 25, 100]
-    dataset: ["MNIST", "FashionMNIST"]
-    conv_model_config: [
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: true},
-      {conv_sizes: [1, 8, 32, 64], dense_sizes: [576, 128], use_bn: false},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: true},
-      {conv_sizes: [1, 8, 32], dense_sizes: [1568, 128], use_bn: false},
-    ]
+    neg_loss_clip_threshold: [0.5, 2., 5.]

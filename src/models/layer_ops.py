@@ -180,7 +180,7 @@ class ReparametrizedBatchNorm2dOp(ModuleOperation):
         dummy_var = torch.ones_like(self.weight)
 
         return F.batch_norm(x, dummy_mean, dummy_var,
-            weight=(self.weight + 0.5), bias=self.bias, training=True)
+            weight=(self.weight + 1), bias=self.bias, training=True)
 
 
 class ResidualOp(ModuleOperation):
