@@ -10,7 +10,7 @@ def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
-def make_basic_block(in_planes, out_planes, stride=1, downsample=None):
+def make_residual_block(in_planes, out_planes, stride=1, downsample=None):
     downsample = nn.Sequential(Noop()) if downsample is None else downsample
 
     return nn.Sequential(
@@ -26,6 +26,15 @@ def make_basic_block(in_planes, out_planes, stride=1, downsample=None):
             downsample
         ),
         nn.ReLU(inplace=True)
+    )
+
+
+def make_simple_block(channels_in:int, channels_out:int):
+    return nn.Sequential(
+        nn.Conv2d(channels_in, channels_out, kernel_size=3, padding=1, bias=False),
+        ReparametrizedBatchNorm2d(channels_out),
+        nn.ReLU(inplace=True),
+        nn.MaxPool2d(2, 2),
     )
 
 
@@ -70,8 +79,8 @@ class ResNet18(nn.Module):
             downsample = None
 
         return nn.Sequential(
-            make_basic_block(in_planes, out_planes, stride, downsample),
-            make_basic_block(out_planes, out_planes)
+            make_residual_block(in_planes, out_planes, stride, downsample),
+            make_residual_block(out_planes, out_planes)
         )
 
     def forward(self, x):
@@ -81,25 +90,34 @@ class ResNet18(nn.Module):
 class FastResNet(ResNet18):
     def _construct_model(self, n_input_channels, n_classes):
         self.nn = nn.Sequential(
+            # nn.Conv2d(n_input_channels, 64, kernel_size=3, padding=1, bias=False),
+            # ReparametrizedBatchNorm2d(64),
+            # nn.ReLU(inplace=True),
+
+            # make_simple_block(64, 128),
+            # make_residual_block(128, 128),
+            # make_simple_block(128, 256),
+            # make_simple_block(256, 512),
+            # make_residual_block(512, 512),
+
+            # # nn.AdaptiveMaxPool2d((1, 1)),
+            # nn.MaxPool2d(4, 4),
+            # Flatten(),
+            # nn.Linear(512, n_classes)
+
             nn.Conv2d(n_input_channels, 64, kernel_size=3, padding=1, bias=False),
             ReparametrizedBatchNorm2d(64),
             nn.ReLU(inplace=True),
 
-            nn.Conv2d(64, 128, kernel_size=3, padding=1, bias=False),
-            ReparametrizedBatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),
+            make_simple_block(64, 128),
 
-            make_basic_block(128, 128),
-            make_basic_block(128, 128),
+            make_residual_block(128, 128),
+            make_residual_block(128, 128),
 
-            nn.Conv2d(128, 256, kernel_size=3, padding=1, bias=False),
-            ReparametrizedBatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),
+            make_simple_block(128, 256),
 
-            make_basic_block(256, 256),
-            make_basic_block(256, 256),
+            make_residual_block(256, 256),
+            make_residual_block(256, 256),
 
             nn.AdaptiveMaxPool2d((1, 1)),
             Flatten(),

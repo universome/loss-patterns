@@ -66,12 +66,20 @@ class EnsembleTrainer(BaseTrainer):
             preds = self.model.run_model_by_id(i, x)
             loss = self.criterion(preds, y).mean()
 
+            if self.config.hp.decorrelation_type == 'none':
+                # Detach from graph to save memory
+                loss.backward()
+                preds = preds.detach()
+                loss = loss.detach()
+
             point_losses.append(loss)
             point_accs.append((preds.argmax(dim=1) == y).float().mean().item())
             point_preds.append(preds)
 
         total_loss = torch.stack(point_losses).mean()
-        total_loss.backward(retain_graph=True)
+
+        if self.config.hp.decorrelation_type != 'none':
+            total_loss.backward(retain_graph=True)
 
         self.writer.add_scalar('Train/loss/mean', torch.stack(point_losses).mean().item(), self.num_iters_done)
         self.writer.add_scalar('Train/loss/max', torch.stack(point_losses).max().item(), self.num_iters_done)
@@ -99,8 +107,8 @@ class EnsembleTrainer(BaseTrainer):
         self.log_weight_stats()
         clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
         self.optim.step()
-
         self.scheduler.step()
+
         self.writer.add_scalar('Stats/lr', self.scheduler.get_lr()[0], self.num_iters_done)
 
     def log_weight_stats(self):

@@ -1,19 +1,24 @@
-title: "Trying to fit a classifier"
 trainer: "ClassifierTrainer"
 random_seed: 42
 data_dir: "data"
 modules:
   models: ["model"]
   optims: ["optim"]
-model_name: "conv"
-max_num_epochs: 10
-val_freq_epochs: 1
+max_num_epochs: 25
+val_freq_epochs: 5
 hp:
-  batch_size: 256
-  lr: 0.001
-  conv_model_config:
-    conv_sizes: [1, 8, 32, 64]
-    dense_sizes: [576, 512, 128]
-    activation: 'relu'
-    use_bn: true
-    use_dropout: true
+  batch_size: 512
+  model_name: "fast_resnet"
+  optim:
+    type: "SGD"
+    kwargs:
+      lr: 1 # Setting to 1 since we are using LR scheduler
+      nesterov: true
+      momentum: 0.9
+      weight_decay: 0.25
+    scheduler:
+      type: "triangle_lr"
+      kwargs:
+        knots: [0, 5, 25]
+        values: [0., 0.0008, 0.]
+

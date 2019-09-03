@@ -1,4 +1,3 @@
-title: "Trying to fit a masked minimum"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
@@ -6,35 +5,30 @@ mask_type: "icon"
 modules:
   models: ["model"]
   optims: ["optim"]
-logging:
-  training_progress: False
-max_num_epochs: 300
+max_num_epochs: 100
 good_and_bad_val_acc_diff_threshold: 0.01
-diff_threshold_num_warmup_epochs: 30
+diff_threshold_num_warmup_epochs: 50
 val_freq_epochs: 10
 
 hp:
-  model_name: "resnet18"
+  model_name: "fast_resnet"
   icon_file_path: "custom-icons/mona-lisa.png"
   should_center_origin: true
 
-  norm_l2_coef: 1.
-  ort_l2_coef: 10.
   batch_size: 512
-
-  num_good_cells_per_update: 10
-  num_bad_cells_per_update: 10
+  num_good_cells_per_update: 100
+  num_bad_cells_per_update: 100
+  parametrization_type: "up_orthogonal"
   grad_clip_threshold: 10
 
   optim:
     type: "SGD"
-    kwargs: {lr: 1, nesterov: true, momentum: 0.9, weight_decay: 0.005}
+    kwargs: {lr: 1, nesterov: true, momentum: 0.9, weight_decay: 0.1}
     scheduler:
       type: "triangle_lr"
-      kwargs: {knots: [0, 5, 50], values: [0.0001, 0.4, 0.001]}
+      kwargs: {knots: [0, 5, 80], values: [0., 0.001, 0.0001]}
 hpo:
   num_parallel_experiments_per_gpu: 1
   scheme: "grid-search"
   grid:
-    parametrization_type: ["simple", "up_orthogonal"]
-    neg_loss_clip_threshold: [0.5, 2., 5.]
+    neg_loss_clip_threshold: [2., 5., 0.5]

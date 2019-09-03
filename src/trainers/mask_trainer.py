@@ -102,7 +102,7 @@ class MaskTrainer(BaseTrainer):
         if self.config.hp.model_name == 'fast_resnet':
             self.torch_model_builder = lambda: FastResNet(
                 n_classes=10, n_input_channels=self.config.hp.get('n_input_channels', 1)).nn
-        if self.config.hp.model_name == 'resnet18':
+        elif self.config.hp.model_name == 'resnet18':
             self.torch_model_builder = lambda: ResNet18(
                 n_classes=10, n_input_channels=self.config.hp.get('n_input_channels', 1)).nn
         elif self.config.hp.model_name == "vgg":
@@ -114,7 +114,7 @@ class MaskTrainer(BaseTrainer):
         elif self.config.hp.model_name == "conv":
             self.torch_model_builder = lambda: ConvModel(self.config.hp.conv_model_config).nn
         else:
-            raise NotImplementedError("Model %s is not supported" % self.config.hp.model_name)
+            raise NotImplementedError(f"Model {self.config.hp.model_name} is not supported")
 
     def init_criterions(self):
         self.criterion = nn.CrossEntropyLoss(reduction='none')
