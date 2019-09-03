@@ -4,7 +4,7 @@ data_dir: "data"
 modules:
   models: ["model"]
   optims: ["optim"]
-max_num_epochs: 25
+max_num_epochs: 30
 val_freq_epochs: 5
 hp:
   batch_size: 512
@@ -15,10 +15,10 @@ hp:
       lr: 1 # Setting to 1 since we are using LR scheduler
       nesterov: true
       momentum: 0.9
-      weight_decay: 0.25
+      weight_decay: 0.1
     scheduler:
       type: "triangle_lr"
       kwargs:
-        knots: [0, 5, 25]
-        values: [0., 0.0008, 0.]
+        knots: [0, 5, 30]
+        values: [0., 0.001, 0.00001]
 

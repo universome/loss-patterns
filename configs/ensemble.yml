@@ -5,10 +5,10 @@ data_dir: "data"
 modules:
   models: ["model"]
   optims: ["optim"]
-val_freq_epochs: 10
-max_num_epochs: 100
+val_freq_epochs: 5
+max_num_epochs: 50
 checkpoint:
-  freq_epochs: 100
+  save_last: true
 hp:
   model_name: "fast_resnet"
   n_input_channels: 3
@@ -34,6 +34,6 @@ hp:
     scheduler:
       type: "triangle_lr"
       kwargs:
-        knots: [0, 5, 100]
-        values: [0.0001, 0.4, 0.0001]
+        knots: [0, 5, 50]
+        values: [0., 0.1, 0.]
 
