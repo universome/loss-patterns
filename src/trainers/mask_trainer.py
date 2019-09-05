@@ -70,12 +70,20 @@ class MaskTrainer(BaseTrainer):
             data_train = MNIST(data_dir, train=True, transform=transforms.ToTensor())
             data_test = MNIST(data_dir, train=False, transform=transforms.ToTensor())
         elif dataset == 'CIFAR10':
-            transform = transforms.Compose([
+            train_transform = transforms.Compose([
+                transforms.Pad(padding=4),
+                transforms.RandomCrop(size=(32, 32)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToTensor(),
+                transforms.RandomErasing(p=0.5, scale=(0.25, 0.25), ratio=(1., 1.)), # Cut out 8x8 square
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            ])
+            test_transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             ])
-            data_train = CIFAR10(data_dir, train=True, transform=transform)
-            data_test = CIFAR10(data_dir, train=False, transform=transform)
+            data_train = CIFAR10(data_dir, train=True, transform=train_transform)
+            data_test = CIFAR10(data_dir, train=False, transform=test_transform)
         else:
             raise NotImplementedError(f"Unknown dataset: {dataset}")
 

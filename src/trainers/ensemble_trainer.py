@@ -64,7 +64,7 @@ class EnsembleTrainer(BaseTrainer):
 
         for i in random.sample(point_coords, num_models):
             preds = self.model.run_model_by_id(i, x)
-            loss = self.criterion(preds, y).mean()
+            loss = self.criterion(preds, y).sum()
 
             if self.config.hp.decorrelation_type == 'none':
                 # Detach from graph to save memory
@@ -102,10 +102,11 @@ class EnsembleTrainer(BaseTrainer):
             decorrelation_loss *= self.config.hp.get('decorrelation_coef', 1.)
             decorrelation_loss.backward()
 
-        self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
-
         self.log_weight_stats()
-        clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
+
+        if self.config.hp.has('grad_clip_threshold'):
+            clip_grad_norm_(self.model.parameters(), self.config.hp.grad_clip_threshold)
+
         self.optim.step()
         self.scheduler.step()
 
@@ -120,8 +121,8 @@ class EnsembleTrainer(BaseTrainer):
 
             # Grad norms
             self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
-            self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
-            self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
+            # self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
+            # self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
         elif self.config.hp.ensemble_type == 'mapping':
             mapping_weight_norm = weight_vector(self.model.mapping.parameters()).norm()
             mapping_grad_norm = torch.cat([p.grad.view(-1) for p in self.model.mapping.parameters()]).norm()
@@ -133,6 +134,7 @@ class EnsembleTrainer(BaseTrainer):
 
         self.writer.add_histogram('Coords/x', self.model.coords[:,0].cpu().detach().numpy(), self.num_iters_done)
         self.writer.add_histogram('Coords/y', self.model.coords[:,1].cpu().detach().numpy(), self.num_iters_done)
+        # self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
 
     def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
         "Computes decorrelation regularization based on predictions"

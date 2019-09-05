@@ -20,7 +20,6 @@ class PlaneEnsemble(EnsembleBase):
         assert coords_init_strategy in self.COORDS_INIT_STRATEGIES, \
             f"Unknown init strategy: {coords_init_strategy}"
 
-        self.dummy_model = torch_model_cls()
         self.register_param('coords', torch.stack([self.sample_coords(coords_init_strategy) for _ in range(num_models)]))
         self.register_param('origin_param', weight_vector(torch_model_cls().parameters()))
         self.register_param('right_param', weight_vector(torch_model_cls().parameters()))
@@ -28,14 +27,15 @@ class PlaneEnsemble(EnsembleBase):
 
     def sample_coords(self, init_strategy:str):
         if init_strategy == 'isotropic_normal':
-            return torch.randn(2) / 10
+            return torch.randn(2) / 100
         elif init_strategy == 'standard_uniform':
-            return torch.rand(2) / 10
+            return torch.rand(2) / 100
         else:
             raise NotImplementedError
 
     def get_model_weights_by_id(self, i:int):
-        x, y = self.coords[i]
-        w = self.origin_param + x * self.right_param + y * self.up_param
+        # x, y = self.coords[i]
+        # w = self.origin_param + x * self.right_param + y * self.up_param
+        w = self.origin_param
 
         return w

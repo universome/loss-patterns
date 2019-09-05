@@ -2,7 +2,7 @@ from typing import List
 import torch.nn as nn
 from firelab.config import Config
 
-from src.model_zoo.layers import Flatten, Noop
+from src.model_zoo.layers import Flatten, Identity
 from src.models.layers import ReparametrizedBatchNorm2d
 
 
@@ -72,9 +72,9 @@ class ConvBlock(nn.Module):
 
         self.block = nn.Sequential(
             nn.Conv2d(in_size, out_size, kernel_size=3, padding=1),
-            ReparametrizedBatchNorm2d(out_size) if use_bn else Noop(),
+            ReparametrizedBatchNorm2d(out_size) if use_bn else Identity(),
             activation(),
-            Noop() if (self.is_residual or not use_maxpool) else nn.MaxPool2d(2, 2)
+            Identity() if (self.is_residual or not use_maxpool) else nn.MaxPool2d(2, 2)
         )
 
     def forward(self, x):

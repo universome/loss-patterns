@@ -16,6 +16,7 @@ from src.models import ConvModel
 from src.models.resnet import FastResNet
 from src.utils import validate, weight_vector
 from src.trainers.mask_trainer import MaskTrainer
+from src.models.layer_ops import convert_sequential_model_to_op
 
 
 class ClassifierTrainer(BaseTrainer):
@@ -51,7 +52,10 @@ class ClassifierTrainer(BaseTrainer):
         if self.config.hp.model_name == 'conv':
             self.model = ConvModel(self.config.hp.conv_model_config)
         elif self.config.hp.model_name == 'fast_resnet':
-            self.model = FastResNet(n_classes=10, n_input_channels=3)
+            model = FastResNet(n_classes=10, n_input_channels=3).nn
+            self.model = convert_sequential_model_to_op(weight_vector(model.parameters()), model, detach=True)
+
+            assert len(weight_vector(model.parameters())) == len(weight_vector(self.model.parameters()))
         else:
             raise NotImplementedError(f'Model {self.config.hp.model_name} is not supported')
 

@@ -13,7 +13,6 @@ class EnsembleBase(ModuleOperation):
         self.coords = [None] * num_models
         self.dummy_model = torch_model_cls()
 
-
     def get_model_weights_by_id(self, i:int):
         raise NotImplementedError
 

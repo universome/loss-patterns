@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from src.model_zoo.layers import Flatten, Noop, Add
+from src.model_zoo.layers import Flatten, Identity, Add
 from .layer_ops import ReparametrizedBatchNorm2d
 
 
@@ -11,7 +11,7 @@ def conv3x3(in_planes, out_planes, stride=1):
 
 
 def make_residual_block(in_planes, out_planes, stride=1, downsample=None):
-    downsample = nn.Sequential(Noop()) if downsample is None else downsample
+    downsample = nn.Sequential(Identity()) if downsample is None else downsample
 
     return nn.Sequential(
         Add(

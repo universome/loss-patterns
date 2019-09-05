@@ -6,7 +6,7 @@ modules:
   models: ["model"]
   optims: ["optim"]
 val_freq_epochs: 5
-max_num_epochs: 50
+max_num_epochs: 40
 checkpoint:
   save_last: true
 hp:
@@ -14,14 +14,13 @@ hp:
   n_input_channels: 3
   ensemble_type: "plane"
   batch_size: 512
-  optim: "adam"
-  grad_clip_threshold: 10
+  # grad_clip_threshold: 1000
   coords_init_strategy: "standard_uniform"
   dataset: "CIFAR10"
   decorrelation_type: "none"
   decorrelation_coef: 0.01
-  num_models: 10
-  num_models_per_update: 10
+  num_models: 1
+  num_models_per_update: 1
 
   # Optimizer params
   optim:
@@ -30,10 +29,9 @@ hp:
       lr: 1 # Setting to 1 since we are using LR scheduler
       nesterov: true
       momentum: 0.9
-      weight_decay: 0.25
+      weight_decay: 0.1
     scheduler:
       type: "triangle_lr"
       kwargs:
-        knots: [0, 5, 50]
-        values: [0., 0.1, 0.]
-
+        knots: [0, 5, 30]
+        values: [0., 0.001, 0.00001]
