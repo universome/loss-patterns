@@ -12,7 +12,7 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 
 from src.models.ensemble import MappingEnsemble, PlaneEnsemble, NormalEnsemble
-from src.utils import weight_vector
+from src.utils import weight_vector, pairwise_distances
 from src.trainers.mask_trainer import MaskTrainer
 
 
@@ -27,7 +27,7 @@ class EnsembleTrainer(BaseTrainer):
             self.model = PlaneEnsemble(
                 self.torch_model_builder,
                 self.config.hp.num_models,
-                self.config.hp.coords_init_strategy
+                self.config.hp.get('coords_init_strategy', 'isotropic_normal')
             )
         elif self.config.hp.ensemble_type == 'mapping':
             self.model = MappingEnsemble(
@@ -144,26 +144,27 @@ class EnsembleTrainer(BaseTrainer):
 
     def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
         "Computes decorrelation regularization based on predictions"
-        if self.config.hp.decorrelation_type == 'preds_distance':
+
+        if self.config.hp.decorrelation_type == 'none':
+            return None
+        elif self.config.hp.decorrelation_type == 'preds_distance':
             wrong_cls_mask = torch.ones_like(preds[0]).bool()
             wrong_cls_mask[torch.arange(preds[0].size(0)), target] = False
             wrong_cls_preds = torch.stack([p[wrong_cls_mask] for p in preds])
-            pairs = [(i,j) for i in range(self.config.hp.num_models) for j in range(i)]
-            distances = [(wrong_cls_preds[p[0]] - wrong_cls_preds[p[1]]).pow(2).sum() for p in pairs]
-            decorrelation_loss = torch.stack(distances).mean()
-            decorrelation_loss = decorrelation_loss.clamp(0, self.config.hp.decorrelation_loss_clamp)
-            decorrelation_loss *= -1 # Because we want the distance to be larger
+            distances = pairwise_distances(wrong_cls_preds)
         elif self.config.hp.decorrelation_type == 'weights_distance':
-            ws = [self.model.get_model_weights_by_id(i) for i in range(self.model.coords.size(0))]
-            pairs = [(i,j) for i in range(self.config.hp.num_models) for j in range(i)]
-            distances = [(ws[p[0]] - ws[p[1]]).pow(2).sum() for p in pairs]
-            decorrelation_loss = torch.stack(distances).mean()
-            decorrelation_loss = decorrelation_loss.clamp(0, self.config.hp.decorrelation_loss_clamp)
-            decorrelation_loss *= -1 # Because we want the distance to be larger
-        elif self.config.hp.decorrelation_type == 'none':
-            decorrelation_loss = None
+            weights = [self.model.get_model_weights_by_id(i) for i in range(len(self.model.coords))]
+            distances = pairwise_distances(weights)
+        elif self.config.hp.decorrelation_type == 'coords_distance':
+            assert self.config.hp.ensemble_type == 'plane', \
+                "Other ensemble types are not supported for coords_distance decorrelation"
+            distances = pairwise_distances(self.model.coords)
         else:
             raise NotImplementedError
+
+        decorrelation_loss = torch.stack(distances).mean()
+        decorrelation_loss = decorrelation_loss.clamp(0, self.config.hp.decorrelation_loss_clamp)
+        decorrelation_loss *= -1 # Because we want the distance to be larger
 
         return decorrelation_loss
 

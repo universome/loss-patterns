@@ -9,8 +9,11 @@ max_num_epochs: 40
 checkpoint:
   save_last: true
 hp:
-  ensemble_type: "normal"
-  decorrelation_type: "none"
+  ensemble_type: "plane"
+  decorrelation_type: "coords_distance"
+  decorrelation_coef: 0.5
+  decorrelation_loss_clamp: 1.
+  coords_init_strategy: "isotropic_normal"
   model_name: "fast_resnet"
   n_input_channels: 3
   batch_size: 512

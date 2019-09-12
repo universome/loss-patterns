@@ -218,3 +218,10 @@ def elbow_linerp_scores(w_1, w_2, w_elbow, model, dataloader, n_steps:int=25):
     c2b_scores = linerp(w_elbow, w_2, model, dataloader, n_steps=n_steps)
 
     return a2c_scores + c2b_scores
+
+
+def pairwise_distances(vectors:List[torch.Tensor]) -> torch.Tensor:
+    pairs = [(i,j) for i in range(len(vectors)) for j in range(i)]
+    distances = [(vectors[p[0]] - vectors[p[1]]).pow(2).sum() for p in pairs]
+
+    return distances
