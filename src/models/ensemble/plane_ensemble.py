@@ -34,8 +34,7 @@ class PlaneEnsemble(EnsembleBase):
             raise NotImplementedError
 
     def get_model_weights_by_id(self, i:int):
-        # x, y = self.coords[i]
-        # w = self.origin_param + x * self.right_param + y * self.up_param
-        w = self.origin_param
+        x, y = self.coords[i]
+        w = self.origin_param + x * self.right_param + y * self.up_param
 
         return w

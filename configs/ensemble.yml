@@ -1,4 +1,3 @@
-title: "Trying to fit an ensemble with MPO"
 trainer: "EnsembleTrainer"
 random_seed: 42
 data_dir: "data"
@@ -10,17 +9,15 @@ max_num_epochs: 40
 checkpoint:
   save_last: true
 hp:
+  ensemble_type: "normal"
+  decorrelation_type: "none"
   model_name: "fast_resnet"
   n_input_channels: 3
-  ensemble_type: "plane"
   batch_size: 512
-  # grad_clip_threshold: 1000
-  coords_init_strategy: "standard_uniform"
+  grad_clip_threshold: 1000
   dataset: "CIFAR10"
-  decorrelation_type: "none"
-  decorrelation_coef: 0.01
-  num_models: 1
-  num_models_per_update: 1
+  num_models: 3
+  num_models_per_update: 3
 
   # Optimizer params
   optim:
@@ -34,4 +31,4 @@ hp:
       type: "triangle_lr"
       kwargs:
         knots: [0, 5, 30]
-        values: [0., 0.001, 0.00001]
+        values: [0., 0.001, 0.0001]

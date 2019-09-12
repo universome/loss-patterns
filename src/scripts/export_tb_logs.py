@@ -7,7 +7,8 @@ from typing import List, Dict, Tuple
 
 import pandas as pd
 from tqdm import tqdm
-from firelab.utils.fs_utils import load_config, clean_dir
+from firelab.config import Config
+from firelab.utils.fs_utils import clean_dir
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 
@@ -68,7 +69,7 @@ def main(exp_name:str, output_dir:os.PathLike):
 
 
 def extract_data(summary_path:os.PathLike, logs_path:os.PathLike) -> Tuple[List[float], Dict, str]:
-    config = load_config(summary_path).config
+    config = Config.load(summary_path).config
     events_acc = EventAccumulator(logs_path)
     events_acc.Reload()
 

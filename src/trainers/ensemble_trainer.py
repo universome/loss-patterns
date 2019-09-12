@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from firelab import BaseTrainer
 
-from src.models.ensemble import MappingEnsemble, PlaneEnsemble
+from src.models.ensemble import MappingEnsemble, PlaneEnsemble, NormalEnsemble
 from src.utils import weight_vector
 from src.trainers.mask_trainer import MaskTrainer
 
@@ -34,6 +34,11 @@ class EnsembleTrainer(BaseTrainer):
                 self.torch_model_builder,
                 self.config.hp.num_models,
                 self.config.hp.ensemble_config
+            )
+        elif self.config.hp.ensemble_type == 'normal':
+            self.model = NormalEnsemble(
+                self.torch_model_builder,
+                self.config.hp.num_models,
             )
         else:
             raise NotImplementedError(f'Unknown ensemble type: {self.config.hp.ensemble_type}')
@@ -59,7 +64,7 @@ class EnsembleTrainer(BaseTrainer):
         point_losses = []
         point_accs = []
         point_preds = []
-        point_coords = list(range(self.model.coords.size(0)))
+        point_coords = list(range(len(self.model.coords)))
         num_models = min(len(point_coords), self.config.hp.num_models_per_update)
 
         for i in random.sample(point_coords, num_models):
@@ -121,8 +126,8 @@ class EnsembleTrainer(BaseTrainer):
 
             # Grad norms
             self.writer.add_scalar('Stats/grad_norms/origin_param', self.model.origin_param.grad.norm().item(), self.num_iters_done)
-            # self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
-            # self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/right_param', self.model.right_param.grad.norm().item(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/up_param', self.model.up_param.grad.norm().item(), self.num_iters_done)
         elif self.config.hp.ensemble_type == 'mapping':
             mapping_weight_norm = weight_vector(self.model.mapping.parameters()).norm()
             mapping_grad_norm = torch.cat([p.grad.view(-1) for p in self.model.mapping.parameters()]).norm()
@@ -132,9 +137,10 @@ class EnsembleTrainer(BaseTrainer):
         else:
             pass
 
-        self.writer.add_histogram('Coords/x', self.model.coords[:,0].cpu().detach().numpy(), self.num_iters_done)
-        self.writer.add_histogram('Coords/y', self.model.coords[:,1].cpu().detach().numpy(), self.num_iters_done)
-        # self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
+        if self.config.hp.ensemble_type in ('mapping', 'plane'):
+            self.writer.add_histogram('Coords/x', self.model.coords[:,0].cpu().detach().numpy(), self.num_iters_done)
+            self.writer.add_histogram('Coords/y', self.model.coords[:,1].cpu().detach().numpy(), self.num_iters_done)
+            self.writer.add_scalar('Stats/grad_norms/coords', self.model.coords.grad.norm().item(), self.num_iters_done)
 
     def compute_decorrelation(self, preds:List[torch.Tensor], target:torch.Tensor):
         "Computes decorrelation regularization based on predictions"
@@ -142,17 +148,17 @@ class EnsembleTrainer(BaseTrainer):
             wrong_cls_mask = torch.ones_like(preds[0]).bool()
             wrong_cls_mask[torch.arange(preds[0].size(0)), target] = False
             wrong_cls_preds = torch.stack([p[wrong_cls_mask] for p in preds])
-            pairs = [(i,j) for i in range(10) for j in range(i)]
+            pairs = [(i,j) for i in range(self.config.hp.num_models) for j in range(i)]
             distances = [(wrong_cls_preds[p[0]] - wrong_cls_preds[p[1]]).pow(2).sum() for p in pairs]
             decorrelation_loss = torch.stack(distances).mean()
-            decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
+            decorrelation_loss = decorrelation_loss.clamp(0, self.config.hp.decorrelation_loss_clamp)
             decorrelation_loss *= -1 # Because we want the distance to be larger
         elif self.config.hp.decorrelation_type == 'weights_distance':
             ws = [self.model.get_model_weights_by_id(i) for i in range(self.model.coords.size(0))]
-            pairs = [(i,j) for i in range(10) for j in range(i)]
+            pairs = [(i,j) for i in range(self.config.hp.num_models) for j in range(i)]
             distances = [(ws[p[0]] - ws[p[1]]).pow(2).sum() for p in pairs]
             decorrelation_loss = torch.stack(distances).mean()
-            decorrelation_loss = decorrelation_loss.clamp(0, 10) # Because model can just separate models apart and be happy
+            decorrelation_loss = decorrelation_loss.clamp(0, self.config.hp.decorrelation_loss_clamp)
             decorrelation_loss *= -1 # Because we want the distance to be larger
         elif self.config.hp.decorrelation_type == 'none':
             decorrelation_loss = None
@@ -172,7 +178,7 @@ class EnsembleTrainer(BaseTrainer):
         with torch.no_grad():
             for x, y in self.val_dataloader:
                 x, y = x.to(self.device_name), y.to(self.device_name)
-                individual_preds = torch.stack([self.model.run_model_by_id(i, x) for i in range(self.model.coords.size(0))])
+                individual_preds = torch.stack([self.model.run_model_by_id(i, x) for i in range(len(self.model.coords))])
                 ensemble_preds = individual_preds.mean(dim=0)
 
                 individual_losses.extend([self.criterion(p, y).cpu().mean().item() for p in individual_preds])
