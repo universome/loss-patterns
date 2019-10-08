@@ -1,4 +1,4 @@
-firelab~=0.0.8.2
+firelab~=0.0.11
 torch~=1.2.0
 torchvision~=0.4.0
 matplotlib~=3.1.1
