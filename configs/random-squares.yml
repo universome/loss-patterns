@@ -2,24 +2,17 @@ title: "Fitting random squares"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
-model_name: "conv"
 mask_type: "randomly_filled_square"
 modules:
   models: ["model"]
   optims: ["optim"]
 logging:
-  training_progress: False
+  training_progress: True
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 30
 max_num_epochs: 100
 checkpoint:
   freq_epochs: 50
-# max_num_iters: 1
-# solution_vis:
-#   granularity:
-#     x: 3
-#     y: 3
-#   padding: 1
 val_freq_epochs: 1
 hp:
   optim: "adam"
@@ -34,17 +27,24 @@ hp:
   neg_loss_clip_threshold: 5
   square_size: 30
   parametrization_type: "up_orthogonal"
-  lr: 0.0003
-hpo:
-  num_parallel_experiments_per_gpu: 1
-  scheme: "grid-search"
-  grid:
-    fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    _seeds: [1, 2, 3, 4, 5]
-    # _seeds: [1, 2, 3]
-    # fill_prob: [0.2, 0.5, 0.8]
-    conv_model_config: [
-      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128]},
-      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true},
-      {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_skip_connection: true},
-    ]
+  fill_prob: 0.5
+
+  model_name: "conv"
+  conv_model_config: {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true}
+
+  optim:
+    type: "adam"
+    kwargs: {lr: 0.0003}
+# hpo:
+#   num_parallel_experiments_per_gpu: 1
+#   scheme: "grid-search"
+#   grid:
+#     fill_prob: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+#     _seeds: [1, 2, 3, 4, 5]
+#     # _seeds: [1, 2, 3]
+#     # fill_prob: [0.2, 0.5, 0.8]
+#     conv_model_config: [
+#       {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128]},
+#       {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_bn: true},
+#       {conv_sizes: [1, 8, 8, 32, 32, 64, 64], dense_sizes: [1024, 128], use_skip_connection: true},
+#     ]

@@ -131,7 +131,7 @@ class MaskTrainer(BaseTrainer):
         optim_type = self.config.hp.get('optim.type', 'adam').lower()
 
         if optim_type == 'adam':
-            self.optim = Adam(self.model.parameters(), lr=self.config.hp.lr)
+            self.optim = Adam(self.model.parameters(), **self.config.hp.optim.kwargs.to_dict())
         elif optim_type == 'sgd':
             self.optim = SGD(self.model.parameters(), **self.config.hp.optim.kwargs.to_dict())
         else:

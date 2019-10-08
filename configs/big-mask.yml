@@ -9,26 +9,28 @@ max_num_epochs: 100
 good_and_bad_val_acc_diff_threshold: 0.01
 diff_threshold_num_warmup_epochs: 50
 val_freq_epochs: 10
-
+logging:
+  training_progress: True
 hp:
   model_name: "fast_resnet"
   icon_file_path: "custom-icons/mona-lisa.png"
   should_center_origin: true
 
   batch_size: 512
-  num_good_cells_per_update: 100
-  num_bad_cells_per_update: 100
+  num_good_cells_per_update: 50
+  num_bad_cells_per_update: 50
   parametrization_type: "up_orthogonal"
   grad_clip_threshold: 10
+  neg_loss_clip_threshold: 2.
 
-  optim:
-    type: "SGD"
-    kwargs: {lr: 1, nesterov: true, momentum: 0.9, weight_decay: 0.1}
-    scheduler:
-      type: "triangle_lr"
-      kwargs: {knots: [0, 5, 80], values: [0., 0.001, 0.0001]}
 hpo:
   num_parallel_experiments_per_gpu: 1
   scheme: "grid-search"
   grid:
-    neg_loss_clip_threshold: [2., 5., 0.5]
+    optim: [
+      {type: "adam", kwargs: {lr: 0.00001}},
+      {type: "adam", kwargs: {lr: 0.00005}},
+      {type: "adam", kwargs: {lr: 0.0001}},
+      {type: "adam", kwargs: {lr: 0.0005}},
+      {type: "adam", kwargs: {lr: 0.001}},
+    ]

@@ -2,7 +2,6 @@ title: "Trying to fit different simple masks"
 trainer: "MaskTrainer"
 random_seed: 42
 data_dir: "data"
-model_name: "conv"
 mask_type: "icon"
 modules:
   models: ["model"]
@@ -15,13 +14,8 @@ val_freq_epochs: 1
 max_num_epochs: 100
 checkpoint:
   freq_epochs: 50
-# max_num_iters: 1
-# solution_vis:
-#   granularity:
-#     x: 3
-#     y: 3
-#   padding: 1
 hp:
+  dataset: "FashionMNIST"
   norm_l2_coef: 10.
   ort_l2_coef: 10.
   batch_size: 512
@@ -33,30 +27,28 @@ hp:
   target_icon_size: [50, 50]
   optim: "adam"
   grad_clip_threshold: 100
+
+  parametrization_type: "up_orthogonal"
+  neg_loss_clip_threshold: 2.5
+
+  model_name: "conv"
   conv_model_config:
     conv_sizes: [1, 8, 32, 64]
     dense_sizes: [1024, 128]
     use_bn: false
+    use_maxpool: true
+
 hpo:
-  num_parallel_experiments_per_gpu: 5
+  num_parallel_experiments_per_gpu: 1
   scheme: "grid-search"
   grid:
-    lr: [0.0005, 0.00025, 0.0001, 0.00005]
-    neg_loss_clip_threshold: [2, 5]
-    parametrization_type: ["simple", "up_orthogonal"]
     icon_file_path: [
-      "main-icons/041-star of david.png",
-      "main-icons/balalaika (1).png",
-      "main-icons/batman (1).png",
-      "main-icons/batman-logo.png",
-      "main-icons/black-evil-cat.png",
-      "main-icons/duck-side-view-outline.png",
-      "main-icons/eiffel-tower.png",
-      "main-icons/freemasonry.png",
-      "main-icons/kremlin.png",
-      "main-icons/lego.png",
-      "main-icons/locomotive.png",
-      "main-icons/r2d2.png",
-      "main-icons/risk-skull.png",
-      "main-icons/start-up (1).png"
+      # "more-icons/smiling-emoticon-square-face.png",
+      # "more-icons/spooky.png"
+      "more-icons/hand-1.png",
+      "more-icons/hand-2.png",
+    ]
+    optim: [
+      {type: "adam", kwargs: {"lr": 0.00025}},
+      {type: "adam", kwargs: {"lr": 0.0001}},
     ]
