@@ -1,4 +1,4 @@
-Implementation of [Loss Surface Sightseeing by Multi-Point Optimization](https://arxiv.org/abs/1910.03867).
+Implementation of [Loss Landscape Sightseeing with Multi-Point Optimization](https://arxiv.org/abs/1910.03867).
 
 ![](images/main-image.png)
 
