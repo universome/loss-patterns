@@ -2,7 +2,12 @@ Implementation of [Loss Landscape Sightseeing with Multi-Point Optimization](htt
 
 ![](images/main-image.png)
 
-To implement the results you will need to install [firelab](https://github.com/universome/firelab) and run the following command:
+To implement the results you will need to clone this repo (note the `--recursive` flag which is needed since we use submodules) first:
+```
+git clone --recursive https://github.com/universome/loss-patterns
+```
+
+And then install [firelab](https://github.com/universome/firelab) and run the following command:
 ```
 firelab start configs/icons-mask-hpo.yml
 ```
